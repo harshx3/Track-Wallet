@@ -43,13 +43,19 @@ struct SettingsView: View {
                     NavigationLink {
                         AccountsListView()
                     } label: {
-                        Label("Accounts", systemImage: "wallet.pass")
+                        Label("Accounts", systemImage: "wallet.pass.fill")
                     }
 
                     NavigationLink {
                         CategoriesListView()
                     } label: {
-                        Label("Categories", systemImage: "folder")
+                        Label("Categories", systemImage: "folder.fill")
+                    }
+
+                    NavigationLink {
+                        RecurringPaymentsView()
+                    } label: {
+                        Label("Recurring Plans", systemImage: "arrow.clockwise.circle.fill")
                     }
                 } header: {
                     Text("Manage")

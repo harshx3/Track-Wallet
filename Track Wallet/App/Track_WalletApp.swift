@@ -18,7 +18,8 @@ struct Track_WalletApp: App {
             Account.self,
             Transaction.self,
             Category.self,
-            Debt.self
+            Debt.self,
+            RecurringPayment.self
         ])
 
         do {

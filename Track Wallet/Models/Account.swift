@@ -26,9 +26,12 @@ final class Account {
     
     @Relationship(deleteRule: .cascade, inverse: \Transaction.fromAccount)
     var outgoingTransactions: [Transaction]?
-    
+
     @Relationship(deleteRule: .cascade, inverse: \Transaction.toAccount)
     var incomingTransactions: [Transaction]?
+
+    @Relationship(deleteRule: .cascade, inverse: \RecurringPayment.account)
+    var recurringPayments: [RecurringPayment]?
     
     init(
         id: UUID = UUID(),

@@ -33,6 +33,11 @@ struct ContentView: View {
                             Label("Debts", systemImage: "person.2.fill")
                         }
 
+                    RecurringPaymentsView()
+                        .tabItem {
+                            Label("Recurring", systemImage: "arrow.clockwise.circle.fill")
+                        }
+
                     SettingsView(authManager: authManager)
                         .tabItem {
                             Label("Settings", systemImage: "gearshape.fill")
@@ -50,5 +55,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView(authManager: AuthenticationManager())
-        .modelContainer(for: [Account.self, Transaction.self, Category.self, Debt.self])
+        .modelContainer(for: [Account.self, Transaction.self, Category.self, Debt.self, RecurringPayment.self])
 }

@@ -19,6 +19,9 @@ final class Category {
     
     @Relationship(deleteRule: .nullify, inverse: \Transaction.category)
     var transactions: [Transaction]?
+
+    @Relationship(deleteRule: .nullify, inverse: \RecurringPayment.category)
+    var recurringPayments: [RecurringPayment]?
     
     init(
         id: UUID = UUID(),

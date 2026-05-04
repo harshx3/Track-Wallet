@@ -33,6 +33,10 @@ struct AppTheme {
     // Liabilities
     static let liability = Color(red: 1.0, green: 0.27, blue: 0.23) // #FF453A
     static let liabilityLight = Color(red: 1.0, green: 0.27, blue: 0.23, opacity: 0.1)
+
+    // Recurring
+    static let recurring = Color(red: 0.37, green: 0.36, blue: 0.90) // Indigo
+    static let recurringLight = Color(red: 0.37, green: 0.36, blue: 0.90, opacity: 0.1)
     
     // Backgrounds
     static let background = Color(.systemGroupedBackground)
