@@ -27,41 +27,28 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Net Worth
+                // Net Worth + Liabilities
                 Section {
-                    VStack(spacing: AppSpacing.md) {
-                        HStack(spacing: AppSpacing.md) {
-                            Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.title2)
-                                .foregroundColor(.white)
-                                .frame(width: 48, height: 48)
-                                .background(
-                                    RoundedRectangle(cornerRadius: AppRadius.sm)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: calculator.totalNetWorth >= 0
-                                                    ? [AppTheme.income, AppTheme.income.opacity(0.7)]
-                                                    : [AppTheme.expense, AppTheme.expense.opacity(0.7)],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                )
+                    HStack(spacing: AppSpacing.sm) {
+                        DashboardCard(
+                            title: "Net Worth",
+                            amount: calculator.totalNetWorth.currencyFormatted,
+                            icon: "chart.line.uptrend.xyaxis",
+                            gradient: calculator.totalNetWorth >= 0
+                                ? [AppTheme.income, AppTheme.income.opacity(0.7)]
+                                : [AppTheme.expense, AppTheme.expense.opacity(0.7)]
+                        )
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Net Worth")
-                                    .font(AppTypography.callout)
-                                    .foregroundColor(AppTheme.textSecondary)
-
-                                Text(calculator.totalNetWorth.currencyFormatted)
-                                    .font(AppTypography.amountMedium)
-                                    .foregroundColor(AppTheme.textPrimary)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        DashboardCard(
+                            title: "Liabilities",
+                            amount: calculator.totalLiabilities.currencyFormatted,
+                            icon: "creditcard.fill",
+                            gradient: [AppTheme.expense, AppTheme.expense.opacity(0.7)]
+                        )
                     }
-                    .padding(.vertical, 6)
                 }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
 
                 // Overview
                 Section {
@@ -177,6 +164,7 @@ struct DashboardView: View {
                 }
             }
             .navigationTitle("Dashboard")
+            .listSectionSpacing(.compact)
         }
         .onAppear {
             calculator.update(accounts: accounts, debts: debts, transactions: transactions, recurringPayments: recurringPayments)
@@ -197,6 +185,48 @@ struct DashboardView: View {
 }
 
 // MARK: - Supporting Views
+
+struct DashboardCard: View {
+    let title: String
+    let amount: String
+    let icon: String
+    let gradient: [Color]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.sm) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(.white)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: AppRadius.xs)
+                        .fill(
+                            LinearGradient(
+                                colors: gradient,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+
+            Text(title)
+                .font(AppTypography.caption)
+                .foregroundColor(AppTheme.textSecondary)
+
+            Text(amount)
+                .font(AppTypography.amountSmall)
+                .foregroundColor(AppTheme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: AppRadius.md)
+                .fill(AppTheme.cardBackground)
+        )
+    }
+}
 
 struct FinancialStatRow: View {
     let icon: String
