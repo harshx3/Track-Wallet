@@ -16,34 +16,18 @@ struct RecurringPaymentDetailView: View {
 
     @State private var showingDeleteAlert = false
     @State private var showingProcessAlert = false
+    @State private var showingCancelAlert = false
 
     var body: some View {
         List {
+            // Header
             Section {
                 VStack(spacing: AppSpacing.md) {
-                    ZStack {
-                        Circle()
-                            .stroke(AppTheme.border, lineWidth: 8)
-                            .frame(width: 100, height: 100)
-                        Circle()
-                            .trim(from: 0, to: CGFloat(payment.progress))
-                            .stroke(
-                                progressColor,
-                                style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                            )
-                            .frame(width: 100, height: 100)
-                            .rotationEffect(.degrees(-90))
-
-                        VStack(spacing: 2) {
-                            Text("\(Int(payment.progress * 100))%")
-                                .font(.system(size: 22, weight: .bold, design: .rounded))
-                                .foregroundColor(progressColor)
-                            Text("paid")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(AppTheme.textSecondary)
-                        }
+                    if payment.isSubscription {
+                        subscriptionHeader
+                    } else {
+                        installmentHeader
                     }
-                    .padding(.top, AppSpacing.sm)
 
                     Text(payment.name)
                         .font(AppTypography.headlineLarge)
@@ -56,41 +40,38 @@ struct RecurringPaymentDetailView: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    HStack(spacing: AppSpacing.lg) {
-                        StatBadge(
-                            title: "Paid",
-                            value: payment.paidAmount.currencyFormatted,
-                            color: AppTheme.income
-                        )
-                        StatBadge(
-                            title: "Remaining",
-                            value: payment.remainingAmount.currencyFormatted,
-                            color: AppTheme.expense
-                        )
-                        StatBadge(
-                            title: "Total",
-                            value: payment.totalAmount.currencyFormatted,
-                            color: AppTheme.primary
-                        )
+                    if payment.isSubscription {
+                        subscriptionStats
+                    } else {
+                        installmentStats
                     }
-                    .padding(.bottom, AppSpacing.xs)
                 }
                 .frame(maxWidth: .infinity)
             }
             .listRowBackground(Color.clear)
 
+            // Plan Details
             Section {
-                DetailRow(icon: "dollarsign.circle.fill", title: "Installment", value: "\(payment.installmentAmount.currencyFormatted)\(payment.frequency.shortLabel)", color: AppTheme.primary)
-                DetailRow(icon: "number.circle.fill", title: "Progress", value: "\(payment.completedInstallments) of \(payment.totalInstallments)", color: AppTheme.transfer)
+                DetailRow(icon: "dollarsign.circle.fill", title: payment.isSubscription ? "Payment" : "Installment", value: "\(payment.installmentAmount.currencyFormatted)\(payment.frequency.shortLabel)", color: AppTheme.primary)
+
+                if !payment.isSubscription {
+                    DetailRow(icon: "number.circle.fill", title: "Progress", value: "\(payment.completedInstallments) of \(payment.totalInstallments)", color: AppTheme.transfer)
+                } else {
+                    DetailRow(icon: "number.circle.fill", title: "Payments Made", value: "\(payment.completedInstallments)", color: AppTheme.transfer)
+                }
+
                 DetailRow(icon: payment.frequency.icon, title: "Frequency", value: payment.frequency.rawValue, color: AppTheme.asset)
 
                 if payment.frequency == .monthly || payment.frequency == .quarterly {
                     DetailRow(icon: "calendar.circle.fill", title: "Day of Month", value: ordinalDay(payment.dayOfMonth), color: .indigo)
                 }
+
+                DetailRow(icon: payment.resolvedPlanType.icon, title: "Type", value: payment.resolvedPlanType.label, color: AppTheme.recurring)
             } header: {
                 Label("Plan Details", systemImage: "doc.text.fill")
             }
 
+            // Account & Category
             Section {
                 if let account = payment.account {
                     HStack(spacing: AppSpacing.sm) {
@@ -123,8 +104,13 @@ struct RecurringPaymentDetailView: View {
                 Label("Account & Category", systemImage: "creditcard.fill")
             }
 
+            // Schedule
             Section {
                 DetailRow(icon: "play.circle.fill", title: "Started", value: payment.startDate.formatted(date: .abbreviated, time: .omitted), color: AppTheme.income)
+
+                if payment.isSubscription, let endDate = payment.endDate {
+                    DetailRow(icon: "stop.circle.fill", title: "Ends", value: endDate.formatted(date: .abbreviated, time: .omitted), color: AppTheme.expense)
+                }
 
                 if payment.isActive && !payment.isCompleted {
                     DetailRow(
@@ -151,6 +137,7 @@ struct RecurringPaymentDetailView: View {
                 Label("Schedule", systemImage: "calendar")
             }
 
+            // Actions
             if payment.isActive && !payment.isCompleted {
                 Section {
                     Button {
@@ -161,11 +148,20 @@ struct RecurringPaymentDetailView: View {
                             .foregroundColor(AppTheme.primary)
                     }
 
-                    Button {
-                        payment.isActive = false
-                    } label: {
-                        Label("Pause Plan", systemImage: "pause.circle.fill")
-                            .foregroundColor(AppTheme.transfer)
+                    if payment.isSubscription {
+                        Button {
+                            showingCancelAlert = true
+                        } label: {
+                            Label("Cancel Subscription", systemImage: "xmark.circle.fill")
+                                .foregroundColor(AppTheme.expense)
+                        }
+                    } else {
+                        Button {
+                            payment.isActive = false
+                        } label: {
+                            Label("Pause Plan", systemImage: "pause.circle.fill")
+                                .foregroundColor(AppTheme.transfer)
+                        }
                     }
                 } header: {
                     Label("Actions", systemImage: "hand.tap.fill")
@@ -181,6 +177,7 @@ struct RecurringPaymentDetailView: View {
                 }
             }
 
+            // Delete
             Section {
                 Button(role: .destructive) {
                     showingDeleteAlert = true
@@ -204,6 +201,14 @@ struct RecurringPaymentDetailView: View {
         } message: {
             Text("Deduct \(payment.installmentAmount.currencyFormatted) from \(payment.account?.name ?? "account")? This will create a transaction and update the balance.")
         }
+        .alert("Cancel Subscription", isPresented: $showingCancelAlert) {
+            Button("Keep Active", role: .cancel) { }
+            Button("Cancel Subscription", role: .destructive) {
+                payment.isActive = false
+            }
+        } message: {
+            Text("This will stop future payments for \(payment.name). You can resume it later if needed.")
+        }
         .alert("Delete Plan", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
@@ -215,14 +220,110 @@ struct RecurringPaymentDetailView: View {
         }
     }
 
+    // MARK: - Subscription Header
+
+    @ViewBuilder
+    private var subscriptionHeader: some View {
+        ZStack {
+            Circle()
+                .fill(progressColor.opacity(0.12))
+                .frame(width: 100, height: 100)
+
+            Image(systemName: payment.isActive ? "infinity" : "pause.fill")
+                .font(.system(size: 36, weight: .bold))
+                .foregroundStyle(progressColor)
+        }
+        .padding(.top, AppSpacing.sm)
+    }
+
+    // MARK: - Installment Header
+
+    @ViewBuilder
+    private var installmentHeader: some View {
+        ZStack {
+            Circle()
+                .stroke(AppTheme.border, lineWidth: 8)
+                .frame(width: 100, height: 100)
+            Circle()
+                .trim(from: 0, to: CGFloat(payment.progress))
+                .stroke(
+                    progressColor,
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                )
+                .frame(width: 100, height: 100)
+                .rotationEffect(.degrees(-90))
+
+            VStack(spacing: 2) {
+                Text("\(Int(payment.progress * 100))%")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(progressColor)
+                Text("paid")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppTheme.textSecondary)
+            }
+        }
+        .padding(.top, AppSpacing.sm)
+    }
+
+    // MARK: - Stats
+
+    @ViewBuilder
+    private var subscriptionStats: some View {
+        HStack(spacing: AppSpacing.lg) {
+            StatBadge(
+                title: "Total Paid",
+                value: payment.paidAmount.currencyFormatted,
+                color: AppTheme.primary
+            )
+            StatBadge(
+                title: "Payments",
+                value: "\(payment.completedInstallments)",
+                color: AppTheme.transfer
+            )
+            StatBadge(
+                title: "Per Cycle",
+                value: payment.installmentAmount.currencyFormatted,
+                color: AppTheme.recurring
+            )
+        }
+        .padding(.bottom, AppSpacing.xs)
+    }
+
+    @ViewBuilder
+    private var installmentStats: some View {
+        HStack(spacing: AppSpacing.lg) {
+            StatBadge(
+                title: "Paid",
+                value: payment.paidAmount.currencyFormatted,
+                color: AppTheme.income
+            )
+            StatBadge(
+                title: "Remaining",
+                value: payment.remainingAmount.currencyFormatted,
+                color: AppTheme.expense
+            )
+            StatBadge(
+                title: "Total",
+                value: payment.totalAmount.currencyFormatted,
+                color: AppTheme.primary
+            )
+        }
+        .padding(.bottom, AppSpacing.xs)
+    }
+
+    // MARK: - Computed
+
     private var progressColor: Color {
         if payment.isCompleted { return AppTheme.income }
         if payment.isOverdue { return AppTheme.expense }
+        if payment.isSubscription { return AppTheme.recurring }
         return AppTheme.primary
     }
 
     private var statusText: String {
-        if payment.isCompleted { return "Completed" }
+        if payment.isCompleted {
+            return payment.isSubscription ? "Cancelled" : "Completed"
+        }
         if !payment.isActive { return "Paused" }
         if payment.isOverdue { return "Overdue" }
         return "Active"
@@ -252,10 +353,17 @@ struct RecurringPaymentDetailView: View {
         guard let account = payment.account else { return }
         guard payment.isActive, !payment.isCompleted else { return }
 
+        let description: String
+        if payment.isSubscription {
+            description = "\(payment.name) — payment #\(payment.completedInstallments + 1)"
+        } else {
+            description = "Recurring: \(payment.name) (\(payment.completedInstallments + 1)/\(payment.totalInstallments))"
+        }
+
         let transaction = Transaction(
             amount: payment.installmentAmount,
             type: .expense,
-            transactionDescription: "Recurring: \(payment.name) (\(payment.completedInstallments + 1)/\(payment.totalInstallments))",
+            transactionDescription: description,
             date: Date(),
             fromAccount: account,
             category: payment.category
@@ -333,6 +441,7 @@ struct DetailRow: View {
 
     let payment = RecurringPayment(
         name: "MacBook Pro EMI",
+        planType: .installment,
         totalAmount: 2000,
         installmentAmount: 100,
         dayOfMonth: 15,

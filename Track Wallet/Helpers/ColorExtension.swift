@@ -12,6 +12,10 @@ struct AccountIconView: View {
     var size: CGFloat = 36
     var cornerRadius: CGFloat = 8
 
+    private var validSize: CGFloat {
+        max(1, size)
+    }
+
     var body: some View {
         if let faviconURL = account.faviconURL {
             AsyncImage(url: faviconURL) { phase in
@@ -20,7 +24,7 @@ struct AccountIconView: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
+                        .frame(width: validSize, height: validSize)
                         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 default:
                     sfSymbolIcon
@@ -33,9 +37,9 @@ struct AccountIconView: View {
 
     private var sfSymbolIcon: some View {
         Image(systemName: account.icon)
-            .font(.system(size: size * 0.45))
+            .font(.system(size: max(1, validSize * 0.45)))
             .foregroundColor(.white)
-            .frame(width: size, height: size)
+            .frame(width: validSize, height: validSize)
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(account.color.toColor)

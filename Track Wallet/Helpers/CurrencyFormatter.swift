@@ -9,24 +9,6 @@ import Foundation
 import SwiftUI
 
 extension String {
-    var appColor: Color {
-        switch self {
-        case "blue": return .blue
-        case "green": return .green
-        case "orange": return .orange
-        case "red": return .red
-        case "purple": return .purple
-        case "pink": return .pink
-        case "indigo": return .indigo
-        case "teal": return .teal
-        case "yellow": return .yellow
-        case "mint": return .mint
-        case "cyan": return .cyan
-        case "brown": return .brown
-        default: return .blue
-        }
-    }
-
     var iconDisplayName: String {
         switch self {
         case "dollarsign.circle.fill": return "Dollar"

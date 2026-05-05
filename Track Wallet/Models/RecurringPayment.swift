@@ -12,11 +12,13 @@ import SwiftData
 final class RecurringPayment {
     var id: UUID = UUID()
     var name: String = ""
+    var planType: RecurringPlanType?
     var totalAmount: Decimal = 0
     var installmentAmount: Decimal = 0
     var frequency: PaymentFrequency = PaymentFrequency.monthly
     var dayOfMonth: Int = 1
     var startDate: Date = Date()
+    var endDate: Date?
     var totalInstallments: Int = 0
     var completedInstallments: Int = 0
     var paidAmount: Decimal = 0
@@ -31,23 +33,27 @@ final class RecurringPayment {
     init(
         id: UUID = UUID(),
         name: String,
-        totalAmount: Decimal,
+        planType: RecurringPlanType = .installment,
+        totalAmount: Decimal = 0,
         installmentAmount: Decimal,
         frequency: PaymentFrequency = .monthly,
         dayOfMonth: Int = 1,
         startDate: Date = Date(),
-        totalInstallments: Int,
+        endDate: Date? = nil,
+        totalInstallments: Int = 0,
         recurringDescription: String = "",
         account: Account? = nil,
         category: Category? = nil
     ) {
         self.id = id
         self.name = name
+        self.planType = planType
         self.totalAmount = totalAmount
         self.installmentAmount = installmentAmount
         self.frequency = frequency
         self.dayOfMonth = dayOfMonth
         self.startDate = startDate
+        self.endDate = endDate
         self.totalInstallments = totalInstallments
         self.completedInstallments = 0
         self.paidAmount = 0
@@ -63,21 +69,48 @@ final class RecurringPayment {
         )
     }
 
+    var resolvedPlanType: RecurringPlanType {
+        planType ?? .installment
+    }
+
+    var isSubscription: Bool {
+        resolvedPlanType == .subscription
+    }
+
     var remainingAmount: Decimal {
-        max(0, totalAmount - paidAmount)
+        if isSubscription { return 0 }
+        return max(0, totalAmount - paidAmount)
     }
 
     var remainingInstallments: Int {
-        max(0, totalInstallments - completedInstallments)
+        if isSubscription { return 0 }
+        return max(0, totalInstallments - completedInstallments)
     }
 
     var progress: Double {
-        guard totalAmount > 0 else { return 0 }
-        return min(1.0, Double(truncating: (paidAmount / totalAmount) as NSDecimalNumber))
+        let value: Double
+        if isSubscription {
+            guard let endDate else { return 0 }
+            let totalDuration = endDate.timeIntervalSince(startDate)
+            guard totalDuration > 0 else { return 1.0 }
+            let elapsed = Date().timeIntervalSince(startDate)
+            value = elapsed / totalDuration
+        } else {
+            guard totalAmount > 0 else { return 0 }
+            value = Double(truncating: (paidAmount / totalAmount) as NSDecimalNumber)
+        }
+        guard value.isFinite else { return 0 }
+        return min(1.0, max(0, value))
     }
 
     var isCompleted: Bool {
-        completedInstallments >= totalInstallments || paidAmount >= totalAmount
+        if isSubscription {
+            if let endDate {
+                return Date() >= endDate || (!isActive && completedInstallments > 0)
+            }
+            return !isActive && completedInstallments > 0
+        }
+        return completedInstallments >= totalInstallments || paidAmount >= totalAmount
     }
 
     var isDueToday: Bool {
@@ -95,7 +128,9 @@ final class RecurringPayment {
         paidAmount += installmentAmount
 
         if isCompleted {
-            isActive = false
+            if !isSubscription {
+                isActive = false
+            }
             return
         }
 
@@ -104,6 +139,10 @@ final class RecurringPayment {
             dayOfMonth: dayOfMonth,
             frequency: frequency
         )
+
+        if isSubscription, let endDate, nextPaymentDate > endDate {
+            isActive = false
+        }
     }
 
     static func calculateFirstPaymentDate(
@@ -175,6 +214,25 @@ final class RecurringPayment {
             return 28
         }
         return range.count
+    }
+}
+
+enum RecurringPlanType: String, Codable, CaseIterable {
+    case installment = "Installment"
+    case subscription = "Subscription"
+
+    var icon: String {
+        switch self {
+        case .installment: return "chart.bar.fill"
+        case .subscription: return "infinity"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .installment: return "Fixed Plan"
+        case .subscription: return "Subscription"
+        }
     }
 }
 

@@ -11,7 +11,7 @@ import SwiftData
 struct AddAccountView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var name = ""
     @State private var accountType: AccountType = .bank
     @State private var openingBalance = ""
@@ -21,38 +21,31 @@ struct AddAccountView: View {
     @State private var isPaymentMethod = true
     @State private var selectedPaymentMethods: Set<String> = []
     @State private var websiteURL = ""
+    @State private var showingIconPicker = false
     @FocusState private var focusedField: Field?
 
     enum Field {
         case name, openingBalance, currentBalance, websiteURL
     }
-    
-    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal"]
-    let icons = [
-        "dollarsign.circle.fill", "banknote.fill", "building.columns.fill",
-        "creditcard.fill", "wallet.pass.fill", "chart.line.uptrend.xyaxis",
-        "briefcase.fill", "bag.fill"
-    ]
-    
+
+    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal", "yellow", "cyan", "mint", "brown"]
     let availablePaymentMethods = ["Cash", "Cheque", "Zelle", "Wire Transfer", "ACH", "Apple Pay", "Venmo", "PayPal"]
-    
-    // Dynamic label based on account type
+
     var openingBalanceLabel: String {
         accountType == .creditCard ? "Credit Limit" : "Opening Balance"
     }
-    
+
     var currentBalanceLabel: String {
         accountType == .creditCard ? "Current Due" : "Current Balance"
     }
-    
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     TextField("Account Name", text: $name)
                         .focused($focusedField, equals: .name)
-                        .font(.body)
-                    
+
                     Picker("Account Type", selection: $accountType) {
                         ForEach(AccountType.allCases, id: \.self) { type in
                             HStack {
@@ -71,11 +64,10 @@ struct AddAccountView: View {
                             .font(.caption)
                     }
                 }
-                
+
                 Section {
                     HStack {
                         Text(openingBalanceLabel)
-                            .foregroundStyle(.primary)
                         Spacer()
                         Text("$")
                             .foregroundStyle(.secondary)
@@ -85,10 +77,9 @@ struct AddAccountView: View {
                             .multilineTextAlignment(.trailing)
                             .frame(width: 120)
                     }
-                    
+
                     HStack {
                         Text(currentBalanceLabel)
-                            .foregroundStyle(.primary)
                         Spacer()
                         Text("$")
                             .foregroundStyle(.secondary)
@@ -101,8 +92,7 @@ struct AddAccountView: View {
                 } header: {
                     Text("Balance")
                 }
-                
-                // Payment Methods Section
+
                 if accountType != .creditCard {
                     Section {
                         ForEach(availablePaymentMethods, id: \.self) { method in
@@ -134,7 +124,7 @@ struct AddAccountView: View {
                             .font(.caption)
                     }
                 }
-                
+
                 Section {
                     HStack {
                         Image(systemName: "globe")
@@ -162,69 +152,69 @@ struct AddAccountView: View {
                         .font(.caption)
                 }
 
-                Section("Appearance") {
-                    // Icon Selection
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Icon")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
-                            ForEach(icons, id: \.self) { icon in
-                                Button {
-                                    selectedIcon = icon
-                                    focusedField = nil
-                                } label: {
-                                    Image(systemName: icon)
-                                        .font(.title2)
-                                        .foregroundStyle(selectedIcon == icon ? .white : selectedColor.toColor)
-                                        .frame(width: 50, height: 50)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(selectedIcon == icon ? selectedColor.toColor : selectedColor.toColor.opacity(0.2))
-                                        )
-                                }
+                Section {
+                    IconPickerButton(
+                        icon: selectedIcon,
+                        color: selectedColor.toColor,
+                        action: { showingIconPicker = true }
+                    )
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 10) {
+                        ForEach(AppIcons.accountIcons, id: \.self) { icon in
+                            Button {
+                                selectedIcon = icon
+                                focusedField = nil
+                            } label: {
+                                Image(systemName: icon)
+                                    .font(.title3)
+                                    .foregroundStyle(selectedIcon == icon ? .white : selectedColor.toColor)
+                                    .frame(width: 48, height: 48)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(selectedIcon == icon ? selectedColor.toColor : selectedColor.toColor.opacity(0.15))
+                                    )
                             }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                    
-                    // Color Selection
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Color")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(colors, id: \.self) { color in
-                                    Button {
-                                        selectedColor = color
-                                        focusedField = nil
-                                    } label: {
-                                        Circle()
-                                            .fill(color.toColor)
-                                            .frame(width: 50, height: 50)
-                                            .overlay {
-                                                if selectedColor == color {
-                                                    Image(systemName: "checkmark")
-                                                        .foregroundStyle(.white)
-                                                        .fontWeight(.bold)
-                                                        .font(.title3)
-                                                }
-                                            }
-                                            .overlay {
-                                                Circle()
-                                                    .strokeBorder(selectedColor == color ? Color.primary : Color.clear, lineWidth: 3)
-                                            }
-                                    }
-                                }
-                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.vertical, 4)
+
+                    Button {
+                        showingIconPicker = true
+                    } label: {
+                        Label("Browse All Icons", systemImage: "square.grid.2x2")
+                            .font(AppTypography.callout)
+                    }
+                } header: {
+                    Text("Icon")
                 }
-                
+
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 10) {
+                        ForEach(colors, id: \.self) { color in
+                            Button {
+                                selectedColor = color
+                                focusedField = nil
+                            } label: {
+                                Circle()
+                                    .fill(color.toColor)
+                                    .frame(width: 44, height: 44)
+                                    .overlay {
+                                        if selectedColor == color {
+                                            Image(systemName: "checkmark")
+                                                .foregroundStyle(.white)
+                                                .fontWeight(.bold)
+                                        }
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Color")
+                }
+
                 Section {
                     Toggle("Use as Payment Method", isOn: $isPaymentMethod)
                 } footer: {
@@ -236,44 +226,42 @@ struct AddAccountView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveAccount()
-                    }
-                    .disabled(name.isEmpty)
-                    .fontWeight(.semibold)
+                    Button("Save") { saveAccount() }
+                        .disabled(name.isEmpty)
+                        .fontWeight(.semibold)
                 }
-                
+
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button {
-                        focusedField = nil
-                    } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .fontWeight(.semibold)
-                    }
+                    Button("Done") { focusedField = nil }
+                        .fontWeight(.semibold)
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .sheet(isPresented: $showingIconPicker) {
+                IconPickerView(
+                    selectedIcon: $selectedIcon,
+                    accentColor: selectedColor.toColor,
+                    icons: AppIcons.allGroups
+                )
+            }
         }
         .onAppear {
-            // Set default icon based on account type
             selectedIcon = accountType.icon
         }
         .onChange(of: accountType) { _, newType in
             selectedIcon = newType.icon
         }
     }
-    
+
     private func saveAccount() {
         let openingBalanceValue = Decimal(string: openingBalance) ?? 0
         let currentBalanceValue = Decimal(string: currentBalance) ?? 0
-        
+
         let account = Account(
             name: name,
             type: accountType,
@@ -286,7 +274,7 @@ struct AddAccountView: View {
             paymentMethods: Array(selectedPaymentMethods),
             websiteURL: websiteURL.trimmingCharacters(in: .whitespaces)
         )
-        
+
         modelContext.insert(account)
         dismiss()
     }

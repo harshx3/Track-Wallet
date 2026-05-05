@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// MARK: - Professional Color Scheme (MoneyWiz-inspired)
+// MARK: - Professional Color Scheme 
 
 struct AppTheme {
     // Primary Colors

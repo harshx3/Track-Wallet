@@ -53,7 +53,11 @@ struct TransactionsView: View {
             let transaction = transactions[index]
             switch transaction.type {
             case .income:
-                transaction.fromAccount?.currentBalance -= transaction.amount
+                if let fromAccount = transaction.fromAccount {
+                    fromAccount.currentBalance -= transaction.amount
+                } else if let toAccount = transaction.toAccount {
+                    toAccount.currentBalance -= transaction.amount
+                }
             case .expense:
                 if transaction.fromAccount?.type == .creditCard {
                     transaction.fromAccount?.currentBalance -= transaction.amount
@@ -70,7 +74,11 @@ struct TransactionsView: View {
                     }
                 }
             case .reimbursed:
-                transaction.fromAccount?.currentBalance -= transaction.amount
+                if let fromAccount = transaction.fromAccount {
+                    fromAccount.currentBalance -= transaction.amount
+                } else if let toAccount = transaction.toAccount {
+                    toAccount.currentBalance -= transaction.amount
+                }
             }
             modelContext.delete(transaction)
         }

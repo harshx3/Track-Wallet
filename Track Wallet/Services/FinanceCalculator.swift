@@ -57,6 +57,10 @@ class FinanceCalculator {
             .reduce(Decimal(0)) { $0 + $1.installmentAmount }
     }
 
+    var activeSubscriptionCount: Int {
+        recurringPayments.filter { $0.isActive && !$0.isCompleted && $0.isSubscription }.count
+    }
+
     var upcomingRecurringPayments: [RecurringPayment] {
         recurringPayments
             .filter { $0.isActive && !$0.isCompleted }

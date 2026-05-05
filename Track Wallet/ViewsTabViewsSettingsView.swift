@@ -20,9 +20,21 @@ struct SettingsView: View {
                 // Profile
                 Section {
                     HStack(spacing: AppSpacing.md) {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(AppTheme.textSecondary)
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [AppTheme.primary, AppTheme.primary.opacity(0.7)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 48, height: 48)
+
+                            Text(String((authManager.userName.isEmpty ? "U" : authManager.userName).prefix(1)).uppercased())
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        }
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text(authManager.userName.isEmpty ? "Apple ID User" : authManager.userName)
@@ -362,7 +374,13 @@ struct AboutView: View {
                 Image(systemName: "dollarsign.circle.fill")
                     .resizable()
                     .frame(width: 80, height: 80)
-                    .foregroundColor(AppTheme.primary)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [AppTheme.primary, AppTheme.primary.opacity(0.7)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
 
                 VStack(spacing: AppSpacing.xs) {
                     Text("Track Wallet")
@@ -380,7 +398,7 @@ struct AboutView: View {
 
                 Spacer()
 
-                Text("© 2026 Track Wallet")
+                Text("\u{00A9} 2026 Track Wallet")
                     .font(AppTypography.caption)
                     .foregroundColor(AppTheme.textTertiary)
                     .padding(.bottom, AppSpacing.xl)

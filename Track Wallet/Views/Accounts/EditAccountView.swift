@@ -10,9 +10,9 @@ import SwiftData
 
 struct EditAccountView: View {
     @Environment(\.dismiss) private var dismiss
-    
+
     let account: Account
-    
+
     @State private var name = ""
     @State private var selectedColor = "blue"
     @State private var selectedIcon = "dollarsign.circle.fill"
@@ -20,34 +20,30 @@ struct EditAccountView: View {
     @State private var selectedPaymentMethods: Set<String> = []
     @State private var creditLimit = ""
     @State private var websiteURL = ""
+    @State private var showingIconPicker = false
     @FocusState private var focusedField: Field?
 
     enum Field {
         case name, creditLimit, websiteURL
     }
-    
-    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal"]
-    let icons = [
-        "dollarsign.circle.fill", "banknote.fill", "building.columns.fill",
-        "creditcard.fill", "wallet.pass.fill", "chart.line.uptrend.xyaxis",
-        "briefcase.fill", "bag.fill"
-    ]
+
+    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal", "yellow", "cyan", "mint", "brown"]
     let availablePaymentMethods = ["Cash", "Cheque", "Zelle", "Wire Transfer", "ACH", "Apple Pay", "Venmo", "PayPal"]
-    
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     TextField("Account Name", text: $name)
                         .focused($focusedField, equals: .name)
-                    
+
                     HStack {
                         Text("Type")
                         Spacer()
                         Text(account.type.rawValue)
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     if account.type == .creditCard {
                         HStack {
                             Text("Credit Limit")
@@ -61,7 +57,7 @@ struct EditAccountView: View {
                                 .frame(width: 120)
                         }
                     }
-                    
+
                     HStack {
                         Text(account.type == .creditCard ? "Current Due" : "Current Balance")
                         Spacer()
@@ -71,8 +67,7 @@ struct EditAccountView: View {
                 } header: {
                     Text("Account Details")
                 }
-                
-                // Payment Methods Section (not for credit cards)
+
                 if account.type != .creditCard {
                     Section {
                         ForEach(availablePaymentMethods, id: \.self) { method in
@@ -104,7 +99,7 @@ struct EditAccountView: View {
                             .font(.caption)
                     }
                 }
-                
+
                 Section {
                     HStack {
                         Image(systemName: "globe")
@@ -131,68 +126,69 @@ struct EditAccountView: View {
                         .font(.caption)
                 }
 
-                Section("Appearance") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Icon")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                Section {
+                    IconPickerButton(
+                        icon: selectedIcon,
+                        color: selectedColor.toColor,
+                        action: { showingIconPicker = true }
+                    )
 
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 12) {
-                            ForEach(icons, id: \.self) { icon in
-                                Button {
-                                    selectedIcon = icon
-                                    focusedField = nil
-                                } label: {
-                                    Image(systemName: icon)
-                                        .font(.title2)
-                                        .foregroundStyle(selectedIcon == icon ? .white : selectedColor.toColor)
-                                        .frame(width: 50, height: 50)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(selectedIcon == icon ? selectedColor.toColor : selectedColor.toColor.opacity(0.2))
-                                        )
-                                }
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 10) {
+                        ForEach(AppIcons.accountIcons, id: \.self) { icon in
+                            Button {
+                                selectedIcon = icon
+                                focusedField = nil
+                            } label: {
+                                Image(systemName: icon)
+                                    .font(.title3)
+                                    .foregroundStyle(selectedIcon == icon ? .white : selectedColor.toColor)
+                                    .frame(width: 48, height: 48)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(selectedIcon == icon ? selectedColor.toColor : selectedColor.toColor.opacity(0.15))
+                                    )
                             }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                    
-                    // Color Selection
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Color")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
-                                ForEach(colors, id: \.self) { color in
-                                    Button {
-                                        selectedColor = color
-                                        focusedField = nil
-                                    } label: {
-                                        Circle()
-                                            .fill(color.toColor)
-                                            .frame(width: 50, height: 50)
-                                            .overlay {
-                                                if selectedColor == color {
-                                                    Image(systemName: "checkmark")
-                                                        .foregroundStyle(.white)
-                                                        .fontWeight(.bold)
-                                                        .font(.title3)
-                                                }
-                                            }
-                                            .overlay {
-                                                Circle()
-                                                    .strokeBorder(selectedColor == color ? Color.primary : Color.clear, lineWidth: 3)
-                                            }
-                                    }
-                                }
-                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.vertical, 4)
+
+                    Button {
+                        showingIconPicker = true
+                    } label: {
+                        Label("Browse All Icons", systemImage: "square.grid.2x2")
+                            .font(AppTypography.callout)
+                    }
+                } header: {
+                    Text("Icon")
                 }
-                
+
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 10) {
+                        ForEach(colors, id: \.self) { color in
+                            Button {
+                                selectedColor = color
+                                focusedField = nil
+                            } label: {
+                                Circle()
+                                    .fill(color.toColor)
+                                    .frame(width: 44, height: 44)
+                                    .overlay {
+                                        if selectedColor == color {
+                                            Image(systemName: "checkmark")
+                                                .foregroundStyle(.white)
+                                                .fontWeight(.bold)
+                                        }
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Color")
+                }
+
                 Section {
                     Toggle("Use as Payment Method", isOn: $isPaymentMethod)
                 } footer: {
@@ -204,27 +200,19 @@ struct EditAccountView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveChanges()
-                    }
-                    .disabled(name.isEmpty)
-                    .fontWeight(.semibold)
+                    Button("Save") { saveChanges() }
+                        .disabled(name.isEmpty)
+                        .fontWeight(.semibold)
                 }
-                
+
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button {
-                        focusedField = nil
-                    } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .fontWeight(.semibold)
-                    }
+                    Button("Done") { focusedField = nil }
+                        .fontWeight(.semibold)
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -237,9 +225,16 @@ struct EditAccountView: View {
                 creditLimit = account.type == .creditCard ? String(describing: account.creditLimit) : ""
                 websiteURL = account.websiteURL
             }
+            .sheet(isPresented: $showingIconPicker) {
+                IconPickerView(
+                    selectedIcon: $selectedIcon,
+                    accentColor: selectedColor.toColor,
+                    icons: AppIcons.allGroups
+                )
+            }
         }
     }
-    
+
     private func saveChanges() {
         account.name = name
         account.icon = selectedIcon
@@ -248,11 +243,10 @@ struct EditAccountView: View {
         account.paymentMethods = Array(selectedPaymentMethods)
         account.websiteURL = websiteURL.trimmingCharacters(in: .whitespaces)
 
-        // Update credit limit for credit cards
         if account.type == .creditCard, let limitValue = Decimal(string: creditLimit) {
             account.creditLimit = limitValue
         }
-        
+
         dismiss()
     }
 }
@@ -261,13 +255,13 @@ struct EditAccountView: View {
     @Previewable @State var account: Account = {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try! ModelContainer(for: Account.self, configurations: config)
-        
+
         let account = Account(name: "Chase Bank", type: .bank, openingBalance: 5000, currentBalance: 5000)
         container.mainContext.insert(account)
-        
+
         return account
     }()
-    
+
     EditAccountView(account: account)
         .modelContainer(for: Account.self, inMemory: true)
 }

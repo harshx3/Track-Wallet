@@ -29,33 +29,36 @@ struct DashboardView: View {
             List {
                 // Net Worth
                 Section {
-                    HStack(spacing: AppSpacing.md) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 48, height: 48)
-                            .background(
-                                RoundedRectangle(cornerRadius: AppRadius.sm)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: calculator.totalNetWorth >= 0
-                                                ? [AppTheme.income, AppTheme.income.opacity(0.7)]
-                                                : [AppTheme.expense, AppTheme.expense.opacity(0.7)],
-                                            startPoint: .topLeading,
-                                            endPoint: .bottomTrailing
+                    VStack(spacing: AppSpacing.md) {
+                        HStack(spacing: AppSpacing.md) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.title2)
+                                .foregroundColor(.white)
+                                .frame(width: 48, height: 48)
+                                .background(
+                                    RoundedRectangle(cornerRadius: AppRadius.sm)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: calculator.totalNetWorth >= 0
+                                                    ? [AppTheme.income, AppTheme.income.opacity(0.7)]
+                                                    : [AppTheme.expense, AppTheme.expense.opacity(0.7)],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
                                         )
-                                    )
-                            )
+                                )
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Net Worth")
-                                .font(AppTypography.callout)
-                                .foregroundColor(AppTheme.textSecondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Net Worth")
+                                    .font(AppTypography.callout)
+                                    .foregroundColor(AppTheme.textSecondary)
 
-                            Text(calculator.totalNetWorth.currencyFormatted)
-                                .font(AppTypography.amountMedium)
-                                .foregroundColor(AppTheme.textPrimary)
+                                Text(calculator.totalNetWorth.currencyFormatted)
+                                    .font(AppTypography.amountMedium)
+                                    .foregroundColor(AppTheme.textPrimary)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(.vertical, 6)
                 }
@@ -227,20 +230,35 @@ struct FinancialStatRow: View {
 struct UpcomingPaymentRow: View {
     let payment: RecurringPayment
 
+    private var accentColor: Color {
+        if payment.isOverdue { return AppTheme.expense }
+        if payment.isSubscription { return AppTheme.recurring }
+        return AppTheme.primary
+    }
+
     var body: some View {
         HStack(spacing: AppSpacing.sm) {
             ZStack {
-                Circle()
-                    .stroke(AppTheme.primary.opacity(0.2), lineWidth: 3)
-                    .frame(width: 36, height: 36)
-                Circle()
-                    .trim(from: 0, to: CGFloat(payment.progress))
-                    .stroke(payment.isOverdue ? AppTheme.expense : AppTheme.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .frame(width: 36, height: 36)
-                    .rotationEffect(.degrees(-90))
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(payment.isOverdue ? AppTheme.expense : AppTheme.primary)
+                if payment.isSubscription {
+                    Circle()
+                        .fill(accentColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: "infinity")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(accentColor)
+                } else {
+                    Circle()
+                        .stroke(accentColor.opacity(0.2), lineWidth: 3)
+                        .frame(width: 36, height: 36)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(payment.progress))
+                        .stroke(accentColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .frame(width: 36, height: 36)
+                        .rotationEffect(.degrees(-90))
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(accentColor)
+                }
             }
 
             VStack(alignment: .leading, spacing: 2) {

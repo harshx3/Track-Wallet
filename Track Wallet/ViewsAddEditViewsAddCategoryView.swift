@@ -11,39 +11,42 @@ import SwiftData
 struct AddCategoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var name = ""
     @State private var categoryType: TransactionType = .expense
     @State private var selectedColor = "blue"
     @State private var selectedIcon = "folder.fill"
-    
-    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal"]
-    let icons = [
-        "folder.fill", "cart.fill", "house.fill", "car.fill",
-        "fork.knife", "gamecontroller.fill", "gift.fill", "heart.fill",
-        "music.note", "book.fill", "graduationcap.fill", "airplane",
-        "cross.case.fill", "sparkles", "tshirt.fill", "cup.and.saucer.fill"
-    ]
-    
+    @State private var showingIconPicker = false
+
+    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal", "yellow", "cyan", "mint", "brown"]
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Category Details") {
+                Section {
                     TextField("Category Name", text: $name)
-                    
+
                     Picker("Type", selection: $categoryType) {
                         Text("Expense").tag(TransactionType.expense)
                         Text("Income").tag(TransactionType.income)
                     }
+                } header: {
+                    Text("Category Details")
                 }
-                
-                Section("Icon") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 50))], spacing: 16) {
-                        ForEach(icons, id: \.self) { icon in
+
+                Section {
+                    IconPickerButton(
+                        icon: selectedIcon,
+                        color: selectedColor.toColor,
+                        action: { showingIconPicker = true }
+                    )
+
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 48))], spacing: 10) {
+                        ForEach(AppIcons.categoryIcons.prefix(24), id: \.self) { icon in
                             Image(systemName: icon)
-                                .font(.title2)
+                                .font(.title3)
                                 .foregroundStyle(selectedIcon == icon ? .white : .primary)
-                                .frame(width: 50, height: 50)
+                                .frame(width: 48, height: 48)
                                 .background(
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(selectedIcon == icon ? selectedColor.toColor : Color(.systemGray5))
@@ -53,51 +56,64 @@ struct AddCategoryView: View {
                                 }
                         }
                     }
-                    .padding(.vertical, 8)
-                }
-                
-                Section("Color") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(colors, id: \.self) { color in
-                                Circle()
-                                    .fill(color.toColor)
-                                    .frame(width: 44, height: 44)
-                                    .overlay {
-                                        if selectedColor == color {
-                                            Image(systemName: "checkmark")
-                                                .foregroundStyle(.white)
-                                                .fontWeight(.bold)
-                                        }
-                                    }
-                                    .onTapGesture {
-                                        selectedColor = color
-                                    }
-                            }
-                        }
-                        .padding(.vertical, 4)
+                    .padding(.vertical, 4)
+
+                    Button {
+                        showingIconPicker = true
+                    } label: {
+                        Label("Browse All Icons", systemImage: "square.grid.2x2")
+                            .font(AppTypography.callout)
                     }
+                } header: {
+                    Text("Icon")
+                }
+
+                Section {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 10) {
+                        ForEach(colors, id: \.self) { color in
+                            Circle()
+                                .fill(color.toColor)
+                                .frame(width: 44, height: 44)
+                                .overlay {
+                                    if selectedColor == color {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.white)
+                                            .fontWeight(.bold)
+                                    }
+                                }
+                                .onTapGesture {
+                                    selectedColor = color
+                                }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Color")
                 }
             }
             .navigationTitle("New Category")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
+                    Button("Cancel") { dismiss() }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        saveCategory()
-                    }
-                    .disabled(name.isEmpty)
+                    Button("Save") { saveCategory() }
+                        .disabled(name.isEmpty)
+                        .fontWeight(.semibold)
                 }
+            }
+            .sheet(isPresented: $showingIconPicker) {
+                IconPickerView(
+                    selectedIcon: $selectedIcon,
+                    accentColor: selectedColor.toColor,
+                    icons: AppIcons.allGroups
+                )
             }
         }
     }
-    
+
     private func saveCategory() {
         let category = Category(
             name: name,
@@ -105,7 +121,6 @@ struct AddCategoryView: View {
             color: selectedColor,
             type: categoryType
         )
-        
         modelContext.insert(category)
         dismiss()
     }

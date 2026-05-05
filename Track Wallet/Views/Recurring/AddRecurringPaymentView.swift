@@ -16,11 +16,14 @@ struct AddRecurringPaymentView: View {
     @Query(sort: \Category.name) private var categories: [Category]
 
     @State private var name = ""
+    @State private var planType: RecurringPlanType = .installment
     @State private var totalAmount = ""
     @State private var installmentAmount = ""
     @State private var frequency: PaymentFrequency = .monthly
     @State private var dayOfMonth = 1
     @State private var startDate = Date()
+    @State private var hasEndDate = false
+    @State private var endDate = Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date()
     @State private var selectedAccountID: UUID?
     @State private var selectedCategory: Category?
     @State private var recurringDescription = ""
@@ -44,6 +47,7 @@ struct AddRecurringPaymentView: View {
     }
 
     var calculatedInstallments: Int {
+        guard planType == .installment else { return 0 }
         guard let total = Decimal(string: totalAmount),
               let installment = Decimal(string: installmentAmount),
               installment > 0, total > 0 else { return 0 }
@@ -52,7 +56,7 @@ struct AddRecurringPaymentView: View {
     }
 
     var calculatedEndDate: Date? {
-        guard calculatedInstallments > 0 else { return nil }
+        guard planType == .installment, calculatedInstallments > 0 else { return nil }
         let calendar = Calendar.current
         switch frequency {
         case .weekly:
@@ -69,42 +73,78 @@ struct AddRecurringPaymentView: View {
     }
 
     var canSave: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty
-        && (Decimal(string: totalAmount) ?? 0) > 0
-        && (Decimal(string: installmentAmount) ?? 0) > 0
-        && calculatedInstallments > 0
-        && selectedAccountID != nil
+        let hasName = !name.trimmingCharacters(in: .whitespaces).isEmpty
+        let hasInstallment = (Decimal(string: installmentAmount) ?? 0) > 0
+        let hasAccount = selectedAccountID != nil
+
+        if planType == .installment {
+            let hasTotal = (Decimal(string: totalAmount) ?? 0) > 0
+            return hasName && hasTotal && hasInstallment && calculatedInstallments > 0 && hasAccount
+        } else {
+            return hasName && hasInstallment && hasAccount
+        }
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                // Plan Type
                 Section {
-                    TextField("Plan Name", text: $name)
-                        .focused($focusedField, equals: .name)
+                    Picker("Plan Type", selection: $planType) {
+                        ForEach(RecurringPlanType.allCases, id: \.self) { type in
+                            Label(type.label, systemImage: type.icon).tag(type)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                } footer: {
+                    Text(planType == .installment
+                         ? "Fixed plan with a total amount (e.g., EMI, loan)"
+                         : "Ongoing payment with no fixed total (e.g., Netflix, mobile recharge)")
+                        .font(AppTypography.caption)
+                }
 
-                    TextField("Description (Optional)", text: $recurringDescription, axis: .vertical)
-                        .lineLimit(2...4)
-                        .focused($focusedField, equals: .description)
+                // Details
+                Section {
+                    HStack(spacing: AppSpacing.sm) {
+                        Image(systemName: planType.icon)
+                            .foregroundStyle(AppTheme.recurring)
+                            .frame(width: 20)
+                        TextField("Plan Name", text: $name)
+                            .focused($focusedField, equals: .name)
+                    }
+
+                    HStack(spacing: AppSpacing.sm) {
+                        Image(systemName: "text.alignleft")
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .frame(width: 20)
+                        TextField("Description (Optional)", text: $recurringDescription, axis: .vertical)
+                            .lineLimit(2...4)
+                            .focused($focusedField, equals: .description)
+                    }
                 } header: {
                     Label("Details", systemImage: "doc.text")
                 }
 
+                // Amount
                 Section {
-                    HStack {
-                        Text("Total Amount")
-                        Spacer()
-                        Text("$")
-                            .foregroundStyle(.secondary)
-                        TextField("0.00", text: $totalAmount)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 120)
-                            .focused($focusedField, equals: .totalAmount)
+                    if planType == .installment {
+                        HStack {
+                            Text("Total Amount")
+                            Spacer()
+                            Text("$")
+                                .foregroundStyle(.secondary)
+                            TextField("0.00", text: $totalAmount)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 120)
+                                .focused($focusedField, equals: .totalAmount)
+                        }
                     }
 
                     HStack {
-                        Text("Installment")
+                        Text(planType == .installment ? "Installment" : "Amount")
                         Spacer()
                         Text("$")
                             .foregroundStyle(.secondary)
@@ -115,7 +155,7 @@ struct AddRecurringPaymentView: View {
                             .focused($focusedField, equals: .installmentAmount)
                     }
 
-                    if calculatedInstallments > 0 {
+                    if planType == .installment && calculatedInstallments > 0 {
                         HStack {
                             Text("Installments")
                                 .foregroundStyle(.secondary)
@@ -129,6 +169,7 @@ struct AddRecurringPaymentView: View {
                     Label("Amount", systemImage: "dollarsign.circle.fill")
                 }
 
+                // Schedule
                 Section {
                     Picker("Frequency", selection: $frequency) {
                         ForEach(PaymentFrequency.allCases, id: \.self) { freq in
@@ -146,19 +187,33 @@ struct AddRecurringPaymentView: View {
 
                     DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
 
-                    if let endDate = calculatedEndDate {
-                        HStack {
-                            Text("Estimated End")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Text(endDate.formatted(date: .abbreviated, time: .omitted))
-                                .foregroundStyle(.secondary)
+                    if planType == .installment {
+                        if let endDate = calculatedEndDate {
+                            HStack {
+                                Text("Estimated End")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(endDate.formatted(date: .abbreviated, time: .omitted))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        Toggle("Set End Date", isOn: $hasEndDate)
+
+                        if hasEndDate {
+                            DatePicker(
+                                "End Date",
+                                selection: $endDate,
+                                in: startDate...,
+                                displayedComponents: .date
+                            )
                         }
                     }
                 } header: {
                     Label("Schedule", systemImage: "calendar.badge.clock")
                 }
 
+                // Payment Method
                 Section {
                     if paymentAccounts.isEmpty {
                         Text("No payment accounts available")
@@ -168,7 +223,7 @@ struct AddRecurringPaymentView: View {
                             Button {
                                 selectedAccountID = account.id
                             } label: {
-                                HStack {
+                                HStack(spacing: AppSpacing.sm) {
                                     AccountIconView(account: account, size: 28, cornerRadius: 6)
                                     Text(account.name)
                                         .foregroundStyle(.primary)
@@ -196,6 +251,7 @@ struct AddRecurringPaymentView: View {
                     }
                 }
 
+                // Category
                 if !expenseCategories.isEmpty {
                     Section {
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -228,13 +284,14 @@ struct AddRecurringPaymentView: View {
                     }
                 }
 
+                // Preview
                 if canSave {
                     Section {
                         VStack(spacing: AppSpacing.sm) {
-                            HStack {
-                                Image(systemName: "arrow.clockwise.circle.fill")
+                            HStack(spacing: AppSpacing.sm) {
+                                Image(systemName: planType == .subscription ? "infinity" : "arrow.clockwise.circle.fill")
                                     .font(.title2)
-                                    .foregroundStyle(AppTheme.primary)
+                                    .foregroundStyle(AppTheme.recurring)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(name)
                                         .font(AppTypography.bodyEmphasized)
@@ -245,20 +302,37 @@ struct AddRecurringPaymentView: View {
                                     }
                                 }
                                 Spacer()
+                                if planType == .subscription {
+                                    Text("Ongoing")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Capsule().fill(AppTheme.recurring))
+                                }
                             }
 
-                            ProgressView(value: 0)
-                                .tint(AppTheme.primary)
+                            if planType == .installment {
+                                ProgressView(value: 0)
+                                    .tint(AppTheme.primary)
 
-                            HStack {
-                                Text("0 of \(calculatedInstallments) payments")
-                                    .font(AppTypography.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                if let total = Decimal(string: totalAmount) {
-                                    Text(total.currencyFormatted)
+                                HStack {
+                                    Text("0 of \(calculatedInstallments) payments")
                                         .font(AppTypography.caption)
                                         .foregroundStyle(.secondary)
+                                    Spacer()
+                                    if let total = Decimal(string: totalAmount) {
+                                        Text(total.currencyFormatted)
+                                            .font(AppTypography.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            } else {
+                                HStack {
+                                    Text(hasEndDate ? "Until \(endDate.formatted(date: .abbreviated, time: .omitted))" : "Runs until cancelled")
+                                        .font(AppTypography.caption)
+                                        .foregroundStyle(.secondary)
+                                    Spacer()
                                 }
                             }
                         }
@@ -301,24 +375,43 @@ struct AddRecurringPaymentView: View {
     }
 
     private func save() {
-        let total = Decimal(string: totalAmount) ?? 0
         let installment = Decimal(string: installmentAmount) ?? 0
-        guard total > 0, installment > 0 else { return }
+        guard installment > 0 else { return }
 
-        let payment = RecurringPayment(
-            name: name.trimmingCharacters(in: .whitespaces),
-            totalAmount: total,
-            installmentAmount: installment,
-            frequency: frequency,
-            dayOfMonth: dayOfMonth,
-            startDate: startDate,
-            totalInstallments: calculatedInstallments,
-            recurringDescription: recurringDescription,
-            account: selectedAccount,
-            category: selectedCategory
-        )
+        if planType == .installment {
+            let total = Decimal(string: totalAmount) ?? 0
+            guard total > 0 else { return }
 
-        modelContext.insert(payment)
+            let payment = RecurringPayment(
+                name: name.trimmingCharacters(in: .whitespaces),
+                planType: .installment,
+                totalAmount: total,
+                installmentAmount: installment,
+                frequency: frequency,
+                dayOfMonth: dayOfMonth,
+                startDate: startDate,
+                totalInstallments: calculatedInstallments,
+                recurringDescription: recurringDescription,
+                account: selectedAccount,
+                category: selectedCategory
+            )
+            modelContext.insert(payment)
+        } else {
+            let payment = RecurringPayment(
+                name: name.trimmingCharacters(in: .whitespaces),
+                planType: .subscription,
+                installmentAmount: installment,
+                frequency: frequency,
+                dayOfMonth: dayOfMonth,
+                startDate: startDate,
+                endDate: hasEndDate ? endDate : nil,
+                recurringDescription: recurringDescription,
+                account: selectedAccount,
+                category: selectedCategory
+            )
+            modelContext.insert(payment)
+        }
+
         dismiss()
     }
 }
