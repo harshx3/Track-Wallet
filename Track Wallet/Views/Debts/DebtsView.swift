@@ -43,6 +43,10 @@ struct DebtsView: View {
         debts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
     }
 
+    var netBalance: Decimal {
+        totalLending - totalBorrowing
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -66,6 +70,19 @@ struct DebtsView: View {
                                 Text(totalBorrowing.currencyFormatted)
                                     .font(AppTypography.bodyEmphasized)
                                     .foregroundColor(AppTheme.expense)
+                            }
+                        }
+                        if totalLending > 0 && totalBorrowing > 0 {
+                            HStack {
+                                Label(netBalance == 0 ? "Net: Settled" : "Net Balance",
+                                      systemImage: netBalance == 0 ? "checkmark.circle.fill" : "equal.circle.fill")
+                                    .foregroundColor(netBalance > 0 ? AppTheme.transfer : netBalance < 0 ? AppTheme.expense : AppTheme.income)
+                                Spacer()
+                                if netBalance != 0 {
+                                    Text(netBalance > 0 ? "+\(netBalance.currencyFormatted)" : abs(netBalance).currencyFormatted)
+                                        .font(AppTypography.bodyEmphasized)
+                                        .foregroundColor(netBalance > 0 ? AppTheme.transfer : AppTheme.expense)
+                                }
                             }
                         }
                     } header: {
@@ -161,6 +178,14 @@ struct PersonDebtGroup: Identifiable {
         debts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
     }
 
+    var netBalance: Decimal {
+        totalLending - totalBorrowing
+    }
+
+    var isNetSettled: Bool {
+        netBalance == 0 && (totalLending > 0 || totalBorrowing > 0)
+    }
+
     var activeCount: Int {
         debts.filter { !$0.isPaid }.count
     }
@@ -179,13 +204,18 @@ struct PersonDebtGroup: Identifiable {
 struct PersonDebtRow: View {
     let group: PersonDebtGroup
 
+    private var avatarColor: Color {
+        if group.isNetSettled { return AppTheme.income }
+        if group.netBalance > 0 { return AppTheme.transfer }
+        if group.netBalance < 0 { return AppTheme.expense }
+        return AppTheme.primary
+    }
+
     var body: some View {
         HStack(spacing: AppSpacing.sm) {
             ZStack {
                 Circle()
-                    .fill(group.hasLending && !group.hasBorrowing ? AppTheme.transfer :
-                          group.hasBorrowing && !group.hasLending ? AppTheme.expense :
-                          AppTheme.primary)
+                    .fill(avatarColor)
                     .frame(width: 36, height: 36)
 
                 Text(String(group.personName.prefix(1)).uppercased())
@@ -198,8 +228,8 @@ struct PersonDebtRow: View {
                     Text(group.personName)
                         .font(AppTypography.body)
 
-                    if group.debts.count > 1 {
-                        Text("\(group.debts.count)")
+                    if group.activeCount > 1 {
+                        Text("\(group.activeCount)")
                             .font(.caption2)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
@@ -209,16 +239,22 @@ struct PersonDebtRow: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    if group.hasLending {
-                        Text("Lending")
-                            .font(AppTypography.caption)
-                            .foregroundColor(AppTheme.transfer)
-                    }
-                    if group.hasBorrowing {
-                        Text("Borrowing")
-                            .font(AppTypography.caption)
-                            .foregroundColor(AppTheme.expense)
+                if group.isNetSettled {
+                    Text("Settled")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppTheme.income)
+                } else {
+                    HStack(spacing: 8) {
+                        if group.hasLending {
+                            Text("Lent \(group.totalLending.currencyFormatted)")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppTheme.transfer)
+                        }
+                        if group.hasBorrowing {
+                            Text("Owe \(group.totalBorrowing.currencyFormatted)")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppTheme.expense)
+                        }
                     }
                 }
             }
@@ -226,15 +262,23 @@ struct PersonDebtRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                if group.totalLending > 0 {
-                    Text(group.totalLending.currencyFormatted)
+                if group.isNetSettled {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(AppTheme.income)
+                } else if group.netBalance > 0 {
+                    Text("+\(group.netBalance.currencyFormatted)")
                         .font(AppTypography.bodyEmphasized)
                         .foregroundColor(AppTheme.transfer)
-                }
-                if group.totalBorrowing > 0 {
-                    Text(group.totalBorrowing.currencyFormatted)
+                    Text("to receive")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppTheme.textSecondary)
+                } else if group.netBalance < 0 {
+                    Text(abs(group.netBalance).currencyFormatted)
                         .font(AppTypography.bodyEmphasized)
                         .foregroundColor(AppTheme.expense)
+                    Text("to pay")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppTheme.textSecondary)
                 }
             }
         }
@@ -276,6 +320,10 @@ struct PersonDebtsDetailView: View {
         personDebts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
     }
 
+    var netBalance: Decimal {
+        totalLending - totalBorrowing
+    }
+
     var body: some View {
         List {
             Section {
@@ -297,6 +345,19 @@ struct PersonDebtsDetailView: View {
                         Text(totalBorrowing.currencyFormatted)
                             .font(AppTypography.bodyEmphasized)
                             .foregroundColor(AppTheme.expense)
+                    }
+                }
+                if totalLending > 0 && totalBorrowing > 0 {
+                    HStack {
+                        Label(netBalance == 0 ? "Net: Settled" : "Net Balance",
+                              systemImage: netBalance == 0 ? "checkmark.circle.fill" : "equal.circle.fill")
+                            .foregroundColor(netBalance == 0 ? AppTheme.income : netBalance > 0 ? AppTheme.transfer : AppTheme.expense)
+                        Spacer()
+                        if netBalance != 0 {
+                            Text(netBalance > 0 ? "+\(netBalance.currencyFormatted)" : abs(netBalance).currencyFormatted)
+                                .font(AppTypography.bodyEmphasized)
+                                .foregroundColor(netBalance > 0 ? AppTheme.transfer : AppTheme.expense)
+                        }
                     }
                 }
                 if totalLending == 0 && totalBorrowing == 0 {
@@ -422,6 +483,13 @@ struct DebtEntryRow: View {
                             .font(AppTypography.caption)
                             .foregroundColor(dueDate < Date() && !debt.isPaid ? AppTheme.expense : AppTheme.textSecondary)
                     }
+                }
+
+                if let account = debt.account {
+                    Text(debt.type == .lending ? "From: \(account.name)" : "To: \(account.name)")
+                        .font(AppTypography.caption)
+                        .foregroundColor(AppTheme.primary)
+                        .lineLimit(1)
                 }
 
                 if !debt.debtDescription.isEmpty {

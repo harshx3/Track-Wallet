@@ -17,8 +17,9 @@ struct AddCategoryView: View {
     @State private var selectedColor = "blue"
     @State private var selectedIcon = "folder.fill"
     @State private var showingIconPicker = false
+    @State private var customColor = Color.blue
 
-    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal", "yellow", "cyan", "mint", "brown"]
+    let colors = String.namedColors
 
     var body: some View {
         NavigationStack {
@@ -87,6 +88,11 @@ struct AddCategoryView: View {
                         }
                     }
                     .padding(.vertical, 4)
+
+                    ColorPicker("Custom Color", selection: $customColor, supportsOpacity: false)
+                        .onChange(of: customColor) { _, newColor in
+                            selectedColor = newColor.hexString
+                        }
                 } header: {
                     Text("Color")
                 }

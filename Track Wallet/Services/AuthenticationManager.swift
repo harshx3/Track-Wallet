@@ -81,6 +81,11 @@ final class AuthenticationManager {
         userEmail = UserDefaults.standard.string(forKey: userEmailKey) ?? ""
     }
     
+    func updateProfile(name: String) {
+        UserDefaults.standard.set(name, forKey: userNameKey)
+        userName = name
+    }
+
     private func clearUserInfo() {
         UserDefaults.standard.removeObject(forKey: userNameKey)
         UserDefaults.standard.removeObject(forKey: userEmailKey)

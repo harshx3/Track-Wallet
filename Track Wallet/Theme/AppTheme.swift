@@ -67,30 +67,30 @@ struct AppTheme {
 // MARK: - Typography
 
 struct AppTypography {
-    // Display
-    static let displayLarge = Font.system(size: 34, weight: .bold, design: .rounded)
-    static let display = Font.system(size: 28, weight: .bold, design: .rounded)
-    
+    // Display — text style-based for Dynamic Type scaling
+    static let displayLarge: Font = .system(.largeTitle, design: .rounded, weight: .bold)
+    static let display: Font = .system(.title, design: .rounded, weight: .bold)
+
     // Headlines
-    static let headline = Font.system(size: 17, weight: .semibold)
-    static let headlineLarge = Font.system(size: 20, weight: .semibold)
-    
+    static let headline: Font = .headline
+    static let headlineLarge: Font = .system(.title3, weight: .semibold)
+
     // Body
-    static let body = Font.system(size: 17, weight: .regular)
-    static let bodyEmphasized = Font.system(size: 17, weight: .semibold)
-    
+    static let body: Font = .body
+    static let bodyEmphasized: Font = .body.weight(.semibold)
+
     // Callout
-    static let callout = Font.system(size: 16, weight: .regular)
-    static let calloutEmphasized = Font.system(size: 16, weight: .semibold)
-    
+    static let callout: Font = .callout
+    static let calloutEmphasized: Font = .callout.weight(.semibold)
+
     // Captions
-    static let caption = Font.system(size: 12, weight: .regular)
-    static let caption2 = Font.system(size: 11, weight: .regular)
-    
+    static let caption: Font = .caption
+    static let caption2: Font = .caption2
+
     // Amounts
-    static let amountLarge = Font.system(size: 40, weight: .bold, design: .rounded)
-    static let amountMedium = Font.system(size: 28, weight: .bold, design: .rounded)
-    static let amountSmall = Font.system(size: 20, weight: .semibold, design: .rounded)
+    static let amountLarge: Font = .system(.largeTitle, design: .rounded, weight: .bold)
+    static let amountMedium: Font = .system(.title, design: .rounded, weight: .bold)
+    static let amountSmall: Font = .system(.title3, design: .rounded, weight: .semibold)
 }
 
 // MARK: - Spacing

@@ -19,10 +19,12 @@ final class Debt {
     var dueDate: Date?
     var isPaid: Bool = false
     var createdAt: Date = Date()
-    
+
+    var account: Account?
+
     @Relationship(deleteRule: .cascade, inverse: \Transaction.debt)
     var transactions: [Transaction]?
-    
+
     init(
         id: UUID = UUID(),
         personName: String,
@@ -32,7 +34,8 @@ final class Debt {
         date: Date = Date(),
         dueDate: Date? = nil,
         isPaid: Bool = false,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        account: Account? = nil
     ) {
         self.id = id
         self.personName = personName
@@ -43,6 +46,7 @@ final class Debt {
         self.dueDate = dueDate
         self.isPaid = isPaid
         self.createdAt = createdAt
+        self.account = account
         self.transactions = []
     }
     

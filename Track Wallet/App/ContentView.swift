@@ -11,6 +11,17 @@ import SwiftData
 struct ContentView: View {
     let authManager: AuthenticationManager
 
+    @AppStorage("appAppearance") private var appearance: String = AppAppearance.system.rawValue
+    @AppStorage("appTextSize") private var textSize: String = AppTextSize.regular.rawValue
+
+    private var colorScheme: ColorScheme? {
+        (AppAppearance(rawValue: appearance) ?? .system).colorScheme
+    }
+
+    private var dynamicTypeSize: DynamicTypeSize {
+        (AppTextSize(rawValue: textSize) ?? .regular).dynamicTypeSize
+    }
+
     var body: some View {
         Group {
             if authManager.isCheckingCredential {
@@ -48,6 +59,8 @@ struct ContentView: View {
                 SignInView(authManager: authManager)
             }
         }
+        .preferredColorScheme(colorScheme)
+        .dynamicTypeSize(dynamicTypeSize)
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
         .animation(.easeInOut(duration: 0.3), value: authManager.isCheckingCredential)
     }

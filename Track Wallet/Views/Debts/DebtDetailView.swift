@@ -52,6 +52,19 @@ struct DebtDetailView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(debt.isPaid ? AppTheme.income : AppTheme.textPrimary)
                 }
+
+                if let account = debt.account {
+                    HStack {
+                        Text(debt.type == .lending ? "Paid From" : "Received In")
+                        Spacer()
+                        HStack(spacing: 6) {
+                            Image(systemName: account.icon)
+                                .font(.caption)
+                            Text(account.name)
+                        }
+                        .foregroundColor(AppTheme.primary)
+                    }
+                }
             }
 
             Section {

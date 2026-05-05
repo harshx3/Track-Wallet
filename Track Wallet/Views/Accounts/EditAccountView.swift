@@ -21,13 +21,14 @@ struct EditAccountView: View {
     @State private var creditLimit = ""
     @State private var websiteURL = ""
     @State private var showingIconPicker = false
+    @State private var customColor = Color.blue
     @FocusState private var focusedField: Field?
 
     enum Field {
         case name, creditLimit, websiteURL
     }
 
-    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal", "yellow", "cyan", "mint", "brown"]
+    let colors = String.namedColors
     let availablePaymentMethods = ["Cash", "Cheque", "Zelle", "Wire Transfer", "ACH", "Apple Pay", "Venmo", "PayPal"]
 
     var body: some View {
@@ -185,6 +186,11 @@ struct EditAccountView: View {
                         }
                     }
                     .padding(.vertical, 4)
+
+                    ColorPicker("Custom Color", selection: $customColor, supportsOpacity: false)
+                        .onChange(of: customColor) { _, newColor in
+                            selectedColor = newColor.hexString
+                        }
                 } header: {
                     Text("Color")
                 }
@@ -224,6 +230,7 @@ struct EditAccountView: View {
                 selectedPaymentMethods = Set(account.paymentMethods)
                 creditLimit = account.type == .creditCard ? String(describing: account.creditLimit) : ""
                 websiteURL = account.websiteURL
+                customColor = account.color.toColor
             }
             .sheet(isPresented: $showingIconPicker) {
                 IconPickerView(

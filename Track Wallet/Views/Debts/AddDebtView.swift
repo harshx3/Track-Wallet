@@ -12,6 +12,7 @@ struct AddDebtView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Debt.date, order: .reverse) private var allDebts: [Debt]
+    @Query(sort: \Account.name) private var accounts: [Account]
 
     let existingPersonName: String?
 
@@ -22,6 +23,7 @@ struct AddDebtView: View {
     @State private var date = Date()
     @State private var hasDueDate = false
     @State private var dueDate = Date()
+    @State private var selectedAccountID: UUID?
     @FocusState private var focusedField: Field?
 
     enum Field: Hashable {
@@ -30,6 +32,15 @@ struct AddDebtView: View {
 
     init(existingPersonName: String? = nil) {
         self.existingPersonName = existingPersonName
+    }
+
+    var paymentAccounts: [Account] {
+        accounts.filter { $0.isPaymentMethod }
+    }
+
+    var selectedAccount: Account? {
+        guard let id = selectedAccountID else { return nil }
+        return accounts.first { $0.id == id }
     }
 
     var existingPersonNames: [String] {
@@ -103,6 +114,27 @@ struct AddDebtView: View {
                     TextField("Description (Optional)", text: $debtDescription, axis: .vertical)
                         .lineLimit(3...6)
                         .focused($focusedField, equals: .description)
+                }
+
+                if !paymentAccounts.isEmpty {
+                    Section {
+                        Picker(debtType == .lending ? "Paid From" : "Received In", selection: $selectedAccountID) {
+                            Text("None").tag(nil as UUID?)
+                            ForEach(paymentAccounts) { account in
+                                HStack {
+                                    Image(systemName: account.icon)
+                                    Text(account.name)
+                                }
+                                .tag(account.id as UUID?)
+                            }
+                        }
+                    } header: {
+                        Text("Account")
+                    } footer: {
+                        Text(debtType == .lending
+                            ? "Account from which you paid"
+                            : "Account where you received the money")
+                    }
                 }
 
                 Section {
@@ -181,8 +213,17 @@ struct AddDebtView: View {
             type: debtType,
             debtDescription: debtDescription,
             date: date,
-            dueDate: hasDueDate ? dueDate : nil
+            dueDate: hasDueDate ? dueDate : nil,
+            account: selectedAccount
         )
+
+        if let account = selectedAccount {
+            if debtType == .lending {
+                account.currentBalance -= amountValue
+            } else {
+                account.currentBalance += amountValue
+            }
+        }
 
         modelContext.insert(debt)
         dismiss()

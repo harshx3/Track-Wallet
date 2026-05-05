@@ -22,13 +22,14 @@ struct AddAccountView: View {
     @State private var selectedPaymentMethods: Set<String> = []
     @State private var websiteURL = ""
     @State private var showingIconPicker = false
+    @State private var customColor = Color.blue
     @FocusState private var focusedField: Field?
 
     enum Field {
         case name, openingBalance, currentBalance, websiteURL
     }
 
-    let colors = ["blue", "green", "orange", "red", "purple", "pink", "indigo", "teal", "yellow", "cyan", "mint", "brown"]
+    let colors = String.namedColors
     let availablePaymentMethods = ["Cash", "Cheque", "Zelle", "Wire Transfer", "ACH", "Apple Pay", "Venmo", "PayPal"]
 
     var openingBalanceLabel: String {
@@ -211,6 +212,11 @@ struct AddAccountView: View {
                         }
                     }
                     .padding(.vertical, 4)
+
+                    ColorPicker("Custom Color", selection: $customColor, supportsOpacity: false)
+                        .onChange(of: customColor) { _, newColor in
+                            selectedColor = newColor.hexString
+                        }
                 } header: {
                     Text("Color")
                 }

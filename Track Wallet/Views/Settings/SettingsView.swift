@@ -8,46 +8,156 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Appearance & Text Size Preferences
+
+enum AppAppearance: String, CaseIterable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .system: return "circle.lefthalf.filled"
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        }
+    }
+}
+
+enum AppTextSize: String, CaseIterable {
+    case regular = "A"
+    case large = "A+"
+    case extraLarge = "A++"
+
+    var dynamicTypeSize: DynamicTypeSize {
+        switch self {
+        case .regular: return .large
+        case .large: return .xLarge
+        case .extraLarge: return .xxLarge
+        }
+    }
+}
+
+// MARK: - Settings View
+
 struct SettingsView: View {
     let authManager: AuthenticationManager
 
+    @AppStorage("appAppearance") private var appearance: String = AppAppearance.system.rawValue
+    @AppStorage("appTextSize") private var textSize: String = AppTextSize.regular.rawValue
+
     @State private var showingAbout = false
     @State private var showingSignOutConfirmation = false
+    @State private var showingEditProfile = false
+
+    private var selectedAppearance: AppAppearance {
+        AppAppearance(rawValue: appearance) ?? .system
+    }
+
+    private var selectedTextSize: AppTextSize {
+        AppTextSize(rawValue: textSize) ?? .regular
+    }
 
     var body: some View {
         NavigationStack {
             List {
-                // Profile
+                // Profile Header
                 Section {
-                    HStack(spacing: AppSpacing.md) {
-                        ZStack {
-                            Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [AppTheme.primary, AppTheme.primary.opacity(0.7)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                    Button { showingEditProfile = true } label: {
+                        HStack(spacing: AppSpacing.md) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [AppTheme.primary, AppTheme.primary.opacity(0.7)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
                                     )
-                                )
-                                .frame(width: 48, height: 48)
+                                    .frame(width: 56, height: 56)
 
-                            Text(String((authManager.userName.isEmpty ? "U" : authManager.userName).prefix(1)).uppercased())
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                Text(String((authManager.userName.isEmpty ? "U" : authManager.userName).prefix(1)).uppercased())
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(authManager.userName.isEmpty ? "Apple ID User" : authManager.userName)
+                                    .font(AppTypography.headlineLarge)
+                                    .foregroundColor(AppTheme.textPrimary)
+
+                                if !authManager.userEmail.isEmpty {
+                                    Text(authManager.userEmail)
+                                        .font(AppTypography.caption)
+                                        .foregroundColor(AppTheme.textSecondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(AppTheme.textTertiary)
                         }
+                        .padding(.vertical, 4)
+                    }
+                }
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(authManager.userName.isEmpty ? "Apple ID User" : authManager.userName)
-                                .font(AppTypography.bodyEmphasized)
-
-                            if !authManager.userEmail.isEmpty {
-                                Text(authManager.userEmail)
-                                    .font(AppTypography.caption)
-                                    .foregroundColor(AppTheme.textSecondary)
+                // Preferences
+                Section {
+                    HStack {
+                        Label("Appearance", systemImage: selectedAppearance.icon)
+                        Spacer()
+                        Picker("", selection: $appearance) {
+                            ForEach(AppAppearance.allCases, id: \.rawValue) { option in
+                                Text(option.rawValue).tag(option.rawValue)
                             }
                         }
+                        .pickerStyle(.menu)
+                        .tint(AppTheme.textSecondary)
                     }
-                    .padding(.vertical, 4)
+
+                    HStack {
+                        Label("Text Size", systemImage: "textformat.size")
+                        Spacer()
+                        HStack(spacing: 0) {
+                            ForEach(AppTextSize.allCases, id: \.rawValue) { size in
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        textSize = size.rawValue
+                                    }
+                                } label: {
+                                    Text(size.rawValue)
+                                        .font(.system(
+                                            size: size == .regular ? 13 : size == .large ? 15 : 17,
+                                            weight: selectedTextSize == size ? .bold : .regular
+                                        ))
+                                        .foregroundColor(selectedTextSize == size ? .white : AppTheme.textSecondary)
+                                        .frame(width: 44, height: 32)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(selectedTextSize == size ? AppTheme.primary : Color.clear)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(AppTheme.surfaceBackground)
+                        )
+                    }
+                } header: {
+                    Text("Preferences")
                 }
 
                 // Manage
@@ -62,12 +172,6 @@ struct SettingsView: View {
                         CategoriesListView()
                     } label: {
                         Label("Categories", systemImage: "folder.fill")
-                    }
-
-                    NavigationLink {
-                        RecurringPaymentsView()
-                    } label: {
-                        Label("Recurring Plans", systemImage: "arrow.clockwise.circle.fill")
                     }
                 } header: {
                     Text("Manage")
@@ -110,6 +214,9 @@ struct SettingsView: View {
             .sheet(isPresented: $showingAbout) {
                 AboutView()
             }
+            .sheet(isPresented: $showingEditProfile) {
+                EditProfileView(authManager: authManager)
+            }
             .alert("Sign Out", isPresented: $showingSignOutConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Sign Out", role: .destructive) {
@@ -117,6 +224,90 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("Are you sure you want to sign out? Your data will remain on this device.")
+            }
+        }
+    }
+}
+
+// MARK: - Edit Profile
+
+struct EditProfileView: View {
+    @Environment(\.dismiss) private var dismiss
+    let authManager: AuthenticationManager
+
+    @State private var name = ""
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [AppTheme.primary, AppTheme.primary.opacity(0.7)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 80, height: 80)
+
+                            Text(String((name.isEmpty ? "U" : name).prefix(1)).uppercased())
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                }
+
+                Section {
+                    TextField("Your Name", text: $name)
+                        .focused($isNameFocused)
+
+                    if !authManager.userEmail.isEmpty {
+                        HStack {
+                            Text("Email")
+                            Spacer()
+                            Text(authManager.userEmail)
+                                .foregroundColor(AppTheme.textSecondary)
+                        }
+                    }
+                } header: {
+                    Text("Profile")
+                } footer: {
+                    if !authManager.userEmail.isEmpty {
+                        Text("Email is managed by your Apple ID")
+                    }
+                }
+            }
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        authManager.updateProfile(name: name.trimmingCharacters(in: .whitespaces))
+                        dismiss()
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .fontWeight(.semibold)
+                }
+
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { isNameFocused = false }
+                        .fontWeight(.semibold)
+                }
+            }
+            .onAppear {
+                name = authManager.userName
             }
         }
     }

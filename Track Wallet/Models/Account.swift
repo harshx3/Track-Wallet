@@ -32,6 +32,9 @@ final class Account {
 
     @Relationship(deleteRule: .cascade, inverse: \RecurringPayment.account)
     var recurringPayments: [RecurringPayment]?
+
+    @Relationship(deleteRule: .nullify, inverse: \Debt.account)
+    var debts: [Debt]?
     
     init(
         id: UUID = UUID(),
