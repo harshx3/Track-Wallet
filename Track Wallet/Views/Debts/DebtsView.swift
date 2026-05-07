@@ -15,18 +15,10 @@ struct DebtsView: View {
     @State private var showingAddDebt = false
     @State private var filterType: DebtFilterType = .active
 
-    var filteredDebts: [Debt] {
-        switch filterType {
-        case .all: return debts
-        case .lending: return debts.filter { $0.type == .lending && !$0.isPaid }
-        case .borrowing: return debts.filter { $0.type == .borrowing && !$0.isPaid }
-        case .active: return debts.filter { !$0.isPaid }
-        case .settled: return debts.filter { $0.isPaid }
+    var allGroupsByPerson: [PersonDebtGroup] {
+        let grouped = Dictionary(grouping: debts) {
+            $0.personName.trimmingCharacters(in: .whitespaces).lowercased()
         }
-    }
-
-    var groupedByPerson: [PersonDebtGroup] {
-        let grouped = Dictionary(grouping: filteredDebts) { $0.personName.trimmingCharacters(in: .whitespaces).lowercased() }
         return grouped.map { _, personDebts in
             PersonDebtGroup(
                 personName: personDebts.first?.personName ?? "",
@@ -35,54 +27,65 @@ struct DebtsView: View {
         }.sorted { $0.personName.lowercased() < $1.personName.lowercased() }
     }
 
-    var totalLending: Decimal {
-        debts.filter { $0.type == .lending && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+    var displayGroups: [PersonDebtGroup] {
+        switch filterType {
+        case .all:
+            return allGroupsByPerson
+        case .active:
+            return allGroupsByPerson.filter { $0.activeCount > 0 }
+        case .lending:
+            return allGroupsByPerson.filter { $0.netBalance > 0 }
+        case .borrowing:
+            return allGroupsByPerson.filter { $0.netBalance < 0 }
+        case .settled:
+            return allGroupsByPerson.filter { group in
+                group.isNetSettled || (group.activeCount == 0 && group.debts.contains { $0.isPaid })
+            }
+        }
     }
 
-    var totalBorrowing: Decimal {
-        debts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+    var netReceivable: Decimal {
+        allGroupsByPerson.reduce(Decimal(0)) { $0 + max(0, $1.netBalance) }
     }
 
-    var netBalance: Decimal {
-        totalLending - totalBorrowing
+    var netPayable: Decimal {
+        allGroupsByPerson.reduce(Decimal(0)) { $0 + max(0, -$1.netBalance) }
     }
 
     var body: some View {
         NavigationStack {
             List {
-                if totalLending > 0 || totalBorrowing > 0 {
+                if netReceivable > 0 || netPayable > 0 {
                     Section {
-                        if totalLending > 0 {
+                        if netReceivable > 0 {
                             HStack {
                                 Label("You'll Receive", systemImage: "arrow.up.circle.fill")
                                     .foregroundColor(AppTheme.transfer)
                                 Spacer()
-                                Text(totalLending.currencyFormatted)
+                                Text(netReceivable.currencyFormatted)
                                     .font(AppTypography.bodyEmphasized)
                                     .foregroundColor(AppTheme.transfer)
                             }
                         }
-                        if totalBorrowing > 0 {
+                        if netPayable > 0 {
                             HStack {
                                 Label("You Owe", systemImage: "arrow.down.circle.fill")
                                     .foregroundColor(AppTheme.expense)
                                 Spacer()
-                                Text(totalBorrowing.currencyFormatted)
+                                Text(netPayable.currencyFormatted)
                                     .font(AppTypography.bodyEmphasized)
                                     .foregroundColor(AppTheme.expense)
                             }
                         }
-                        if totalLending > 0 && totalBorrowing > 0 {
+                        if netReceivable > 0 && netPayable > 0 {
+                            let overall = netReceivable - netPayable
                             HStack {
-                                Label(netBalance == 0 ? "Net: Settled" : "Net Balance",
-                                      systemImage: netBalance == 0 ? "checkmark.circle.fill" : "equal.circle.fill")
-                                    .foregroundColor(netBalance > 0 ? AppTheme.transfer : netBalance < 0 ? AppTheme.expense : AppTheme.income)
+                                Label("Net Balance", systemImage: "equal.circle.fill")
+                                    .foregroundColor(overall > 0 ? AppTheme.transfer : overall < 0 ? AppTheme.expense : AppTheme.income)
                                 Spacer()
-                                if netBalance != 0 {
-                                    Text(netBalance > 0 ? "+\(netBalance.currencyFormatted)" : abs(netBalance).currencyFormatted)
-                                        .font(AppTypography.bodyEmphasized)
-                                        .foregroundColor(netBalance > 0 ? AppTheme.transfer : AppTheme.expense)
-                                }
+                                Text(overall > 0 ? "+\(overall.currencyFormatted)" : abs(overall).currencyFormatted)
+                                    .font(AppTypography.bodyEmphasized)
+                                    .foregroundColor(overall > 0 ? AppTheme.transfer : AppTheme.expense)
                             }
                         }
                     } header: {
@@ -101,7 +104,7 @@ struct DebtsView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                 }
 
-                if groupedByPerson.isEmpty {
+                if displayGroups.isEmpty {
                     ContentUnavailableView(
                         emptyStateTitle,
                         systemImage: emptyStateIcon,
@@ -109,7 +112,7 @@ struct DebtsView: View {
                     )
                 } else {
                     Section {
-                        ForEach(groupedByPerson) { group in
+                        ForEach(displayGroups) { group in
                             NavigationLink(destination: PersonDebtsDetailView(personName: group.personName)) {
                                 PersonDebtRow(group: group)
                             }
@@ -291,17 +294,17 @@ struct PersonDebtsDetailView: View {
     @Environment(\.modelContext) private var modelContext
 
     let personName: String
-    @Query private var personDebts: [Debt]
+    @Query(sort: \Debt.date, order: .reverse) private var allDebts: [Debt]
     @State private var showingAddEntry = false
 
     init(personName: String) {
         self.personName = personName
-        let name = personName
-        _personDebts = Query(
-            filter: #Predicate<Debt> { $0.personName == name },
-            sort: \Debt.date,
-            order: .reverse
-        )
+    }
+
+    var personDebts: [Debt] {
+        allDebts.filter {
+            $0.personName.trimmingCharacters(in: .whitespaces).lowercased() == personName.trimmingCharacters(in: .whitespaces).lowercased()
+        }
     }
 
     var activeDebts: [Debt] {

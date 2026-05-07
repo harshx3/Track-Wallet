@@ -40,11 +40,27 @@ class FinanceCalculator {
     }
 
     var totalLending: Decimal {
-        debts.filter { $0.type == .lending && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+        let grouped = Dictionary(grouping: debts) {
+            $0.personName.trimmingCharacters(in: .whitespaces).lowercased()
+        }
+        return grouped.values.reduce(Decimal(0)) { total, personDebts in
+            let lending = personDebts.filter { $0.type == .lending && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+            let borrowing = personDebts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+            let net = lending - borrowing
+            return total + max(0, net)
+        }
     }
 
     var totalBorrowing: Decimal {
-        debts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+        let grouped = Dictionary(grouping: debts) {
+            $0.personName.trimmingCharacters(in: .whitespaces).lowercased()
+        }
+        return grouped.values.reduce(Decimal(0)) { total, personDebts in
+            let lending = personDebts.filter { $0.type == .lending && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+            let borrowing = personDebts.filter { $0.type == .borrowing && !$0.isPaid }.reduce(Decimal(0)) { $0 + $1.remainingAmount }
+            let net = lending - borrowing
+            return total + max(0, -net)
+        }
     }
 
     var activeRecurringCount: Int {

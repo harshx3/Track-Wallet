@@ -87,7 +87,7 @@ struct AddTransactionView: View {
                             .foregroundStyle(.secondary)
                         TextField("0.00", text: $amount)
                             .keyboardType(.decimalPad)
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .font(AppTypography.amountMedium)
                             .focused($focusedField, equals: .amount)
                     }
                     .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 16))

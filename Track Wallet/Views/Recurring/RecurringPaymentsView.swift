@@ -273,6 +273,15 @@ struct RecurringPaymentRow: View {
                                 .background(Capsule().fill(statusColor))
                         }
                     }
+
+                    if payment.isSplit {
+                        Text("\(payment.splitCount) split")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(AppTheme.recurring)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(AppTheme.recurring.opacity(0.15)))
+                    }
                 }
             }
 

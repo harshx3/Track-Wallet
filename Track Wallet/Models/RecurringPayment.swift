@@ -26,6 +26,7 @@ final class RecurringPayment {
     var nextPaymentDate: Date = Date()
     var recurringDescription: String = ""
     var createdAt: Date = Date()
+    var splitMembers: [String] = []
 
     var account: Account?
     var category: Category?
@@ -43,7 +44,8 @@ final class RecurringPayment {
         totalInstallments: Int = 0,
         recurringDescription: String = "",
         account: Account? = nil,
-        category: Category? = nil
+        category: Category? = nil,
+        splitMembers: [String] = []
     ) {
         self.id = id
         self.name = name
@@ -62,6 +64,7 @@ final class RecurringPayment {
         self.createdAt = Date()
         self.account = account
         self.category = category
+        self.splitMembers = splitMembers
         self.nextPaymentDate = RecurringPayment.calculateFirstPaymentDate(
             startDate: startDate,
             dayOfMonth: dayOfMonth,
@@ -75,6 +78,19 @@ final class RecurringPayment {
 
     var isSubscription: Bool {
         resolvedPlanType == .subscription
+    }
+
+    var isSplit: Bool {
+        !splitMembers.isEmpty
+    }
+
+    var splitCount: Int {
+        splitMembers.count + 1
+    }
+
+    var perPersonAmount: Decimal {
+        guard splitCount > 1 else { return installmentAmount }
+        return installmentAmount / Decimal(splitCount)
     }
 
     var remainingAmount: Decimal {

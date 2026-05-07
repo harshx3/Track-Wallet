@@ -71,6 +71,52 @@ struct RecurringPaymentDetailView: View {
                 Label("Plan Details", systemImage: "doc.text.fill")
             }
 
+            // Split Members
+            if payment.isSplit {
+                Section {
+                    HStack(spacing: AppSpacing.sm) {
+                        Image(systemName: "person.fill")
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.income))
+                        Text("You")
+                            .font(AppTypography.body)
+                        Spacer()
+                        Text(payment.perPersonAmount.currencyFormatted)
+                            .font(AppTypography.bodyEmphasized)
+                            .foregroundColor(AppTheme.textSecondary)
+                    }
+
+                    ForEach(payment.splitMembers, id: \.self) { member in
+                        HStack(spacing: AppSpacing.sm) {
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.white)
+                                .frame(width: 32, height: 32)
+                                .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.recurring))
+                            Text(member)
+                                .font(AppTypography.body)
+                            Spacer()
+                            Text(payment.perPersonAmount.currencyFormatted)
+                                .font(AppTypography.bodyEmphasized)
+                                .foregroundColor(AppTheme.textSecondary)
+                        }
+                    }
+
+                    HStack {
+                        Text("Total")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(payment.splitCount) people")
+                            .font(AppTypography.caption)
+                            .foregroundColor(AppTheme.textSecondary)
+                        Text(payment.installmentAmount.currencyFormatted)
+                            .font(AppTypography.bodyEmphasized)
+                    }
+                } header: {
+                    Label("Split (\(payment.splitCount) people)", systemImage: "person.2.fill")
+                }
+            }
+
             // Account & Category
             Section {
                 if let account = payment.account {

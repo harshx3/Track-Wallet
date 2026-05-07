@@ -28,10 +28,13 @@ struct AddRecurringPaymentView: View {
     @State private var selectedCategory: Category?
     @State private var recurringDescription = ""
     @State private var showingAddCategory = false
+    @State private var isSplit = false
+    @State private var splitMembers: [String] = []
+    @State private var newMemberName = ""
     @FocusState private var focusedField: Field?
 
     enum Field: Hashable {
-        case name, totalAmount, installmentAmount, description
+        case name, totalAmount, installmentAmount, description, memberName
     }
 
     var paymentAccounts: [Account] {
@@ -167,6 +170,77 @@ struct AddRecurringPaymentView: View {
                     }
                 } header: {
                     Label("Amount", systemImage: "dollarsign.circle.fill")
+                }
+
+                // Split
+                Section {
+                    Toggle("Split with Others", isOn: $isSplit.animation(.easeInOut(duration: 0.2)))
+
+                    if isSplit {
+                        HStack {
+                            Image(systemName: "person.fill.badge.plus")
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .frame(width: 20)
+                            TextField("Person Name", text: $newMemberName)
+                                .focused($focusedField, equals: .memberName)
+                            Button {
+                                let trimmed = newMemberName.trimmingCharacters(in: .whitespaces)
+                                if !trimmed.isEmpty && !splitMembers.contains(trimmed) {
+                                    splitMembers.append(trimmed)
+                                    newMemberName = ""
+                                }
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(AppTheme.primary)
+                            }
+                            .disabled(newMemberName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+
+                        ForEach(splitMembers, id: \.self) { member in
+                            HStack {
+                                Image(systemName: "person.fill")
+                                    .foregroundStyle(AppTheme.recurring)
+                                    .frame(width: 20)
+                                Text(member)
+                                Spacer()
+                                Button {
+                                    splitMembers.removeAll { $0 == member }
+                                    if splitMembers.isEmpty { isSplit = false }
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(AppTheme.textTertiary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+
+                        HStack {
+                            Image(systemName: "person.fill")
+                                .foregroundStyle(AppTheme.income)
+                                .frame(width: 20)
+                            Text("You")
+                                .foregroundStyle(AppTheme.textSecondary)
+                            Spacer()
+                        }
+
+                        if !splitMembers.isEmpty, let installment = Decimal(string: installmentAmount), installment > 0 {
+                            let perPerson = installment / Decimal(splitMembers.count + 1)
+                            HStack {
+                                Text("Per Person")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(perPerson.currencyFormatted) each")
+                                    .font(AppTypography.bodyEmphasized)
+                                    .foregroundColor(AppTheme.primary)
+                            }
+                        }
+                    }
+                } header: {
+                    Label("Split", systemImage: "person.2.fill")
+                } footer: {
+                    if isSplit {
+                        Text("Add people sharing this payment. The total amount is split equally.")
+                    }
                 }
 
                 // Schedule
@@ -335,6 +409,23 @@ struct AddRecurringPaymentView: View {
                                     Spacer()
                                 }
                             }
+
+                            if isSplit && !splitMembers.isEmpty, let installment = Decimal(string: installmentAmount), installment > 0 {
+                                let count = splitMembers.count + 1
+                                let perPerson = installment / Decimal(count)
+                                HStack(spacing: 6) {
+                                    Image(systemName: "person.2.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(AppTheme.recurring)
+                                    Text("\(count) people")
+                                        .font(AppTypography.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text("\(perPerson.currencyFormatted)/person")
+                                        .font(AppTypography.caption)
+                                        .foregroundStyle(AppTheme.recurring)
+                                    Spacer()
+                                }
+                            }
                         }
                         .padding(.vertical, 4)
                     } header: {
@@ -382,6 +473,7 @@ struct AddRecurringPaymentView: View {
             let total = Decimal(string: totalAmount) ?? 0
             guard total > 0 else { return }
 
+            let members = isSplit ? splitMembers : []
             let payment = RecurringPayment(
                 name: name.trimmingCharacters(in: .whitespaces),
                 planType: .installment,
@@ -393,10 +485,12 @@ struct AddRecurringPaymentView: View {
                 totalInstallments: calculatedInstallments,
                 recurringDescription: recurringDescription,
                 account: selectedAccount,
-                category: selectedCategory
+                category: selectedCategory,
+                splitMembers: members
             )
             modelContext.insert(payment)
         } else {
+            let members = isSplit ? splitMembers : []
             let payment = RecurringPayment(
                 name: name.trimmingCharacters(in: .whitespaces),
                 planType: .subscription,
@@ -407,7 +501,8 @@ struct AddRecurringPaymentView: View {
                 endDate: hasEndDate ? endDate : nil,
                 recurringDescription: recurringDescription,
                 account: selectedAccount,
-                category: selectedCategory
+                category: selectedCategory,
+                splitMembers: members
             )
             modelContext.insert(payment)
         }

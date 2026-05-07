@@ -104,7 +104,7 @@ struct AccountCard: View {
                     .foregroundStyle(.white.opacity(0.9))
                 
                 Text(account.balance.currencyFormatted)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(AppTypography.amountMedium)
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
