@@ -23,10 +23,13 @@ struct Track_WalletApp: App {
         ])
 
         do {
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            let configuration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .automatic
+            )
             modelContainer = try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            // Migration failed — delete the old store and recreate
             let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
             for suffix in ["", "-wal", "-shm"] {
                 let fileURL = storeURL.appending(path: suffix)
@@ -34,7 +37,11 @@ struct Track_WalletApp: App {
             }
 
             do {
-                let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+                let configuration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false,
+                    cloudKitDatabase: .automatic
+                )
                 modelContainer = try ModelContainer(for: schema, configurations: [configuration])
             } catch {
                 fatalError("Failed to create ModelContainer after reset: \(error)")

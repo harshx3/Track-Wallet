@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AuthenticationServices
 
 struct SignInView: View {
     let authManager: AuthenticationManager
@@ -36,32 +37,23 @@ struct SignInView: View {
             Spacer()
 
             VStack(spacing: AppSpacing.md) {
-                Text("Sign in to securely access your financial data")
+                Text("Sign in to securely sync your financial data across devices")
                     .font(AppTypography.caption)
                     .foregroundColor(AppTheme.textTertiary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, AppSpacing.xxl)
 
-                Button {
-                    authManager.mockSignIn()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "apple.logo")
-                            .font(.title3)
-                        Text("Sign in with Apple")
-                            .font(AppTypography.bodyEmphasized)
-                    }
-                    .foregroundColor(colorScheme == .dark ? .black : .white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(
-                        RoundedRectangle(cornerRadius: AppRadius.sm)
-                            .fill(colorScheme == .dark ? Color.white : Color.black)
-                    )
+                SignInWithAppleButton(.signIn) { request in
+                    request.requestedScopes = [.fullName, .email]
+                } onCompletion: { result in
+                    authManager.handleSignInResult(result)
                 }
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: AppRadius.sm))
                 .padding(.horizontal, AppSpacing.xxl)
 
-                Text("All data is stored locally on your device")
+                Text("Your data syncs securely via iCloud")
                     .font(AppTypography.caption2)
                     .foregroundColor(AppTheme.textTertiary)
             }

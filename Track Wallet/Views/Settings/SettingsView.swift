@@ -207,7 +207,7 @@ struct SettingsView: View {
                         }
                     }
                 } footer: {
-                    Text("Your data stays on this device even after signing out.")
+                    Text("Your data is synced via iCloud and stays on your devices even after signing out.")
                 }
             }
             .navigationTitle("Settings")

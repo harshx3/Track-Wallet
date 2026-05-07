@@ -32,7 +32,7 @@ struct DebtsView: View {
         case .all:
             return allGroupsByPerson
         case .active:
-            return allGroupsByPerson.filter { $0.activeCount > 0 }
+            return allGroupsByPerson.filter { $0.activeCount > 0 && !$0.isNetSettled }
         case .lending:
             return allGroupsByPerson.filter { $0.netBalance > 0 }
         case .borrowing:
