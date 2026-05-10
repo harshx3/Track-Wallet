@@ -226,6 +226,7 @@ struct AddDebtView: View {
         }
 
         modelContext.insert(debt)
+        HapticManager.notification(.success)
         dismiss()
     }
 }

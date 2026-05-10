@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import LocalAuthentication
 
 // MARK: - Appearance & Text Size Preferences
 
@@ -53,6 +54,9 @@ struct SettingsView: View {
 
     @AppStorage("appAppearance") private var appearance: String = AppAppearance.system.rawValue
     @AppStorage("appTextSize") private var textSize: String = AppTextSize.regular.rawValue
+    @AppStorage("appLockEnabled") private var appLockEnabled = false
+    @AppStorage("appLockTimeout") private var lockTimeout = 0
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
 
     @State private var showingAbout = false
     @State private var showingSignOutConfirmation = false
@@ -66,10 +70,50 @@ struct SettingsView: View {
         AppTextSize(rawValue: textSize) ?? .regular
     }
 
+    private var biometricLabel: String {
+        let context = LAContext()
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) {
+            return context.biometryType == .faceID ? "Face ID" : "Touch ID"
+        }
+        return "Passcode"
+    }
+
+    private var biometricIcon: String {
+        let context = LAContext()
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) {
+            return context.biometryType == .faceID ? "faceid" : "touchid"
+        }
+        return "lock.fill"
+    }
+
+    private func authenticateForSetup() {
+        let context = LAContext()
+        var error: NSError?
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Verify your identity to enable app lock") { success, _ in
+                DispatchQueue.main.async {
+                    if !success {
+                        appLockEnabled = false
+                    }
+                }
+            }
+        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Verify your identity to enable app lock") { success, _ in
+                DispatchQueue.main.async {
+                    if !success {
+                        appLockEnabled = false
+                    }
+                }
+            }
+        } else {
+            appLockEnabled = false
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                // Profile Header
+                // Profile
                 Section {
                     Button { showingEditProfile = true } label: {
                         HStack(spacing: AppSpacing.md) {
@@ -173,14 +217,66 @@ struct SettingsView: View {
                     } label: {
                         Label("Categories", systemImage: "folder.fill")
                     }
+
+                    NavigationLink {
+                        TemplatesListView()
+                    } label: {
+                        Label("Templates", systemImage: "bolt.fill")
+                    }
+
+                    NavigationLink {
+                        DebtsView()
+                    } label: {
+                        Label("Debts", systemImage: "person.2.fill")
+                    }
+
+                    NavigationLink {
+                        MonthlyReportView()
+                    } label: {
+                        Label("Reports & Export", systemImage: "doc.text.magnifyingglass")
+                    }
                 } header: {
                     Text("Manage")
+                }
+
+                // Security
+                Section {
+                    Toggle(isOn: $appLockEnabled) {
+                        Label(biometricLabel, systemImage: biometricIcon)
+                    }
+                    .onChange(of: appLockEnabled) { _, enabled in
+                        if enabled {
+                            authenticateForSetup()
+                        }
+                    }
+
+                    if appLockEnabled {
+                        Picker(selection: $lockTimeout) {
+                            Text("Immediately").tag(0)
+                            Text("1 minute").tag(60)
+                            Text("5 minutes").tag(300)
+                            Text("15 minutes").tag(900)
+                        } label: {
+                            Label("Lock After", systemImage: "clock.fill")
+                        }
+                    }
+                } header: {
+                    Text("Security")
+                } footer: {
+                    Text("Require authentication when opening the app.")
                 }
 
                 // About
                 Section {
                     Button(action: { showingAbout = true }) {
-                        Label("About Track Wallet", systemImage: "info.circle")
+                        Label("About Wallet Flows", systemImage: "info.circle")
+                            .foregroundColor(AppTheme.textPrimary)
+                    }
+
+                    Button {
+                        hasCompletedOnboarding = false
+                    } label: {
+                        Label("Replay Onboarding", systemImage: "arrow.counterclockwise")
                             .foregroundColor(AppTheme.textPrimary)
                     }
 
@@ -313,7 +409,7 @@ struct EditProfileView: View {
     }
 }
 
-// MARK: - Accounts List (Settings destination)
+// MARK: - Accounts List
 
 struct AccountsListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -408,7 +504,7 @@ struct AccountListRow: View {
     }
 }
 
-// MARK: - Categories List (Settings destination)
+// MARK: - Categories List
 
 struct CategoriesListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -497,60 +593,55 @@ struct CategoryListRow: View {
     }
 }
 
-// MARK: - Placeholder Views
+// MARK: - Templates List
 
-struct ExportDataView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Coming Soon",
-            systemImage: "square.and.arrow.up",
-            description: Text("Export functionality will be available in a future update")
-        )
-        .navigationTitle("Export")
-    }
-}
+struct TemplatesListView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TransactionTemplate.usageCount, order: .reverse) private var templates: [TransactionTemplate]
 
-struct BackupView: View {
     var body: some View {
-        ContentUnavailableView(
-            "Coming Soon",
-            systemImage: "arrow.triangle.2.circlepath",
-            description: Text("Backup functionality will be available in a future update")
-        )
-        .navigationTitle("Backup")
-    }
-}
+        List {
+            if templates.isEmpty {
+                ContentUnavailableView(
+                    "No Templates",
+                    systemImage: "bolt.circle",
+                    description: Text("Save a transaction as template for quick reuse")
+                )
+            } else {
+                ForEach(templates) { template in
+                    HStack(spacing: AppSpacing.sm) {
+                        Image(systemName: template.category?.icon ?? "bolt.fill")
+                            .font(.body)
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(template.type == .expense ? AppTheme.expense : AppTheme.income)
+                            )
 
-struct CurrencySettingsView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Coming Soon",
-            systemImage: "dollarsign.circle",
-            description: Text("Currency settings will be available in a future update")
-        )
-        .navigationTitle("Currency")
-    }
-}
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(template.name)
+                                .font(AppTypography.body)
+                            Text("Used \(template.usageCount) time\(template.usageCount == 1 ? "" : "s")")
+                                .font(AppTypography.caption)
+                                .foregroundColor(AppTheme.textSecondary)
+                        }
 
-struct NotificationSettingsView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Coming Soon",
-            systemImage: "bell.badge",
-            description: Text("Notification settings will be available in a future update")
-        )
-        .navigationTitle("Notifications")
-    }
-}
+                        Spacer()
 
-struct SecuritySettingsView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Coming Soon",
-            systemImage: "lock.shield",
-            description: Text("Security settings will be available in a future update")
-        )
-        .navigationTitle("Security")
+                        Text(template.amount.currencyFormatted)
+                            .font(AppTypography.bodyEmphasized)
+                            .foregroundColor(AppTheme.textSecondary)
+                    }
+                }
+                .onDelete { offsets in
+                    for index in offsets {
+                        modelContext.delete(templates[index])
+                    }
+                }
+            }
+        }
+        .navigationTitle("Templates")
     }
 }
 
@@ -574,7 +665,7 @@ struct AboutView: View {
                     )
 
                 VStack(spacing: AppSpacing.xs) {
-                    Text("Track Wallet")
+                    Text("Wallet Flows")
                         .font(AppTypography.display)
 
                     Text("Version 1.0.0")
@@ -582,14 +673,14 @@ struct AboutView: View {
                         .foregroundColor(AppTheme.textSecondary)
                 }
 
-                Text("A personal finance tracking app")
+                Text("Private manual money tracking with iCloud.\nNo bank connection required.")
                     .font(AppTypography.body)
                     .foregroundColor(AppTheme.textSecondary)
                     .multilineTextAlignment(.center)
 
                 Spacer()
 
-                Text("\u{00A9} 2026 Track Wallet")
+                Text("\u{00A9} 2026 Wallet Flows")
                     .font(AppTypography.caption)
                     .foregroundColor(AppTheme.textTertiary)
                     .padding(.bottom, AppSpacing.xl)

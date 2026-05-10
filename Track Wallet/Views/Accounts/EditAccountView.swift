@@ -20,6 +20,8 @@ struct EditAccountView: View {
     @State private var selectedPaymentMethods: Set<String> = []
     @State private var creditLimit = ""
     @State private var websiteURL = ""
+    @State private var hasDueDate = false
+    @State private var nextDueDate = Date()
     @State private var showingIconPicker = false
     @State private var customColor = Color.blue
     @FocusState private var focusedField: Field?
@@ -57,6 +59,17 @@ struct EditAccountView: View {
                                 .multilineTextAlignment(.trailing)
                                 .frame(width: 120)
                         }
+
+                        Toggle("Set Due Date", isOn: $hasDueDate.animation())
+
+                        if hasDueDate {
+                            DatePicker(
+                                "Next Due Date",
+                                selection: $nextDueDate,
+                                in: Date()...,
+                                displayedComponents: .date
+                            )
+                        }
                     }
 
                     HStack {
@@ -67,6 +80,18 @@ struct EditAccountView: View {
                     }
                 } header: {
                     Text("Account Details")
+                }
+
+                Section {
+                    TextField("e.g. chase.com", text: $websiteURL)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .websiteURL)
+                } header: {
+                    Text("Website")
+                } footer: {
+                    Text("Used to show the account's logo.")
                 }
 
                 if account.type != .creditCard {
@@ -99,32 +124,6 @@ struct EditAccountView: View {
                         Text("Select payment methods available for this account")
                             .font(.caption)
                     }
-                }
-
-                Section {
-                    HStack {
-                        Image(systemName: "globe")
-                            .foregroundStyle(.secondary)
-                        TextField("e.g. chase.com", text: $websiteURL)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focusedField, equals: .websiteURL)
-                    }
-
-                    if !websiteURL.isEmpty {
-                        HStack {
-                            Text("Preview")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            AccountIconView(account: account, size: 32)
-                        }
-                    }
-                } header: {
-                    Text("Website Icon (Optional)")
-                } footer: {
-                    Text("Enter a website to use its icon for this account")
-                        .font(.caption)
                 }
 
                 Section {
@@ -229,6 +228,10 @@ struct EditAccountView: View {
                 isPaymentMethod = account.isPaymentMethod
                 selectedPaymentMethods = Set(account.paymentMethods)
                 creditLimit = account.type == .creditCard ? String(describing: account.creditLimit) : ""
+                hasDueDate = account.nextBillDueDate != nil
+                if let existingDue = account.nextDueDate {
+                    nextDueDate = existingDue
+                }
                 websiteURL = account.websiteURL
                 customColor = account.color.toColor
             }
@@ -252,6 +255,14 @@ struct EditAccountView: View {
 
         if account.type == .creditCard, let limitValue = Decimal(string: creditLimit) {
             account.creditLimit = limitValue
+        }
+
+        if account.type == .creditCard && hasDueDate {
+            account.nextBillDueDate = nextDueDate
+            NotificationManager.shared.scheduleDueDateReminder(for: account)
+        } else {
+            account.nextBillDueDate = nil
+            NotificationManager.shared.removeDueDateReminder(for: account)
         }
 
         dismiss()

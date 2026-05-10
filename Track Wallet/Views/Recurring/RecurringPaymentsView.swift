@@ -38,6 +38,11 @@ struct RecurringPaymentsView: View {
         payments.filter { $0.isActive && !$0.isCompleted && $0.isSubscription }.count
     }
 
+    var totalYearlyCost: Decimal {
+        payments.filter { $0.isActive && !$0.isCompleted && $0.isSubscription }
+            .reduce(Decimal(0)) { $0 + $1.yearlyCost }
+    }
+
     var overduePayments: [RecurringPayment] {
         payments.filter { $0.isOverdue }
     }
@@ -74,6 +79,9 @@ struct RecurringPaymentsView: View {
                                         .font(AppTypography.caption)
                                         .foregroundStyle(AppTheme.textSecondary)
                                     Spacer()
+                                    Text("\(totalYearlyCost.currencyFormatted)/yr")
+                                        .font(AppTypography.caption)
+                                        .foregroundStyle(AppTheme.expense)
                                 }
                             }
                         }
@@ -115,13 +123,22 @@ struct RecurringPaymentsView: View {
 
                 // List
                 if filteredPayments.isEmpty {
-                    ContentUnavailableView(
-                        filterType == .active ? "No Active Plans" :
+                    let title = filterType == .active ? "No Active Plans" :
                         filterType == .upcoming ? "No Upcoming Payments" :
-                        filterType == .completed ? "No Completed Plans" : "No Recurring Payments",
-                        systemImage: "arrow.clockwise.circle",
-                        description: Text("Set up installment plans or subscriptions for your recurring expenses")
-                    )
+                        filterType == .completed ? "No Completed Plans" : "No Recurring Payments"
+                    ContentUnavailableView {
+                        Label(title, systemImage: "arrow.clockwise.circle")
+                    } description: {
+                        Text("Add subscriptions, bills, or installments to track recurring expenses.")
+                    } actions: {
+                        if payments.isEmpty {
+                            Button {
+                                showingAddPayment = true
+                            } label: {
+                                Label("Add Recurring", systemImage: "plus.circle.fill")
+                            }
+                        }
+                    }
                 } else {
                     Section {
                         ForEach(filteredPayments) { payment in
@@ -130,6 +147,7 @@ struct RecurringPaymentsView: View {
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
+                                    HapticManager.notification(.warning)
                                     modelContext.delete(payment)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
@@ -137,6 +155,7 @@ struct RecurringPaymentsView: View {
 
                                 if payment.isActive && !payment.isCompleted {
                                     Button {
+                                        HapticManager.impact(.medium)
                                         payment.isActive = false
                                     } label: {
                                         Label(payment.isSubscription ? "Cancel" : "Pause", systemImage: payment.isSubscription ? "xmark.circle" : "pause.circle")
@@ -144,6 +163,7 @@ struct RecurringPaymentsView: View {
                                     .tint(payment.isSubscription ? .red : .orange)
                                 } else if !payment.isActive && !payment.isCompleted {
                                     Button {
+                                        HapticManager.impact(.medium)
                                         payment.isActive = true
                                     } label: {
                                         Label("Resume", systemImage: "play.circle")

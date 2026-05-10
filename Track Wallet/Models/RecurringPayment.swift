@@ -27,6 +27,7 @@ final class RecurringPayment {
     var recurringDescription: String = ""
     var createdAt: Date = Date()
     var splitMembers: [String] = []
+    var reminderDays: Int = -1
 
     var account: Account?
     var category: Category?
@@ -91,6 +92,16 @@ final class RecurringPayment {
     var perPersonAmount: Decimal {
         guard splitCount > 1 else { return installmentAmount }
         return installmentAmount / Decimal(splitCount)
+    }
+
+    var yearlyCost: Decimal {
+        switch frequency {
+        case .weekly: return installmentAmount * 52
+        case .biweekly: return installmentAmount * 26
+        case .monthly: return installmentAmount * 12
+        case .quarterly: return installmentAmount * 4
+        case .yearly: return installmentAmount
+        }
     }
 
     var remainingAmount: Decimal {
