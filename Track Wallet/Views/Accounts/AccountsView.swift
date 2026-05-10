@@ -70,18 +70,14 @@ struct AccountCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                if account.faviconURL != nil {
-                    AccountIconView(account: account, size: 44, cornerRadius: 22)
-                } else {
-                    Image(systemName: account.icon)
-                        .font(.title2)
-                        .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .background(
-                            Circle()
-                                .fill(.white.opacity(0.2))
-                        )
-                }
+                Image(systemName: account.icon)
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        Circle()
+                            .fill(.white.opacity(0.2))
+                    )
                 
                 Spacer()
                 

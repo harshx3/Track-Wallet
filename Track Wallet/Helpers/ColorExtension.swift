@@ -16,20 +16,33 @@ struct AccountIconView: View {
         max(1, size)
     }
 
+    private var faviconURL: URL? {
+        let url = account.websiteURL.trimmingCharacters(in: .whitespaces)
+        guard !url.isEmpty else { return nil }
+        let domain: String
+        if let parsed = URL(string: url.hasPrefix("http") ? url : "https://\(url)")?.host {
+            domain = parsed
+        } else {
+            domain = url
+        }
+        return URL(string: "https://www.google.com/s2/favicons?domain=\(domain)&sz=128")
+    }
+
     var body: some View {
-        if let faviconURL = account.faviconURL {
-            AsyncImage(url: faviconURL) { phase in
+        if let faviconURL {
+            AsyncImage(url: faviconURL, transaction: .init(animation: .easeIn(duration: 0.2))) { phase in
                 switch phase {
                 case .success(let image):
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .scaledToFill()
                         .frame(width: validSize, height: validSize)
                         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
                 default:
                     sfSymbolIcon
                 }
             }
+            .frame(width: validSize, height: validSize)
         } else {
             sfSymbolIcon
         }

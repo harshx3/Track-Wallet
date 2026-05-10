@@ -24,11 +24,11 @@ struct SignInView: View {
                     .foregroundColor(AppTheme.primary)
 
                 VStack(spacing: AppSpacing.xs) {
-                    Text("Track Wallet")
+                    Text("Wallet Flows")
                         .font(AppTypography.displayLarge)
                         .foregroundColor(AppTheme.textPrimary)
 
-                    Text("Your personal finance companion")
+                    Text("Private manual money tracking with iCloud")
                         .font(AppTypography.callout)
                         .foregroundColor(AppTheme.textSecondary)
                 }

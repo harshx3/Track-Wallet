@@ -18,6 +18,8 @@ struct AddCategoryView: View {
     @State private var selectedIcon = "folder.fill"
     @State private var showingIconPicker = false
     @State private var customColor = Color.blue
+    @State private var hasBudget = false
+    @State private var budgetAmount = ""
 
     let colors = String.namedColors
 
@@ -96,6 +98,29 @@ struct AddCategoryView: View {
                 } header: {
                     Text("Color")
                 }
+
+                if categoryType == .expense {
+                    Section {
+                        Toggle("Set Monthly Budget", isOn: $hasBudget.animation(.easeInOut(duration: 0.2)))
+
+                        if hasBudget {
+                            HStack {
+                                Text("$")
+                                    .foregroundStyle(.secondary)
+                                TextField("0.00", text: $budgetAmount)
+                                    .keyboardType(.decimalPad)
+                                Text("/month")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } header: {
+                        Text("Budget")
+                    } footer: {
+                        if hasBudget {
+                            Text("Track spending against this limit each month.")
+                        }
+                    }
+                }
             }
             .navigationTitle("New Category")
             .navigationBarTitleDisplayMode(.inline)
@@ -121,11 +146,13 @@ struct AddCategoryView: View {
     }
 
     private func saveCategory() {
+        let budget = hasBudget ? (Decimal(string: budgetAmount) ?? 0) : 0
         let category = Category(
             name: name,
             icon: selectedIcon,
             color: selectedColor,
-            type: categoryType
+            type: categoryType,
+            monthlyBudget: budget
         )
         modelContext.insert(category)
         dismiss()

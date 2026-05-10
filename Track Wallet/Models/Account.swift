@@ -23,6 +23,8 @@ final class Account {
     var isAsset: Bool = true
     var paymentMethods: [String] = []
     var websiteURL: String = ""
+    var billingDueDay: Int = 0
+    var nextBillDueDate: Date?
     
     @Relationship(deleteRule: .cascade, inverse: \Transaction.fromAccount)
     var outgoingTransactions: [Transaction]?
@@ -35,6 +37,9 @@ final class Account {
 
     @Relationship(deleteRule: .nullify, inverse: \Debt.account)
     var debts: [Debt]?
+
+    @Relationship(deleteRule: .nullify, inverse: \TransactionTemplate.account)
+    var templates: [TransactionTemplate]?
     
     init(
         id: UUID = UUID(),
@@ -66,32 +71,48 @@ final class Account {
         self.incomingTransactions = []
     }
 
-    var faviconURL: URL? {
-        guard !websiteURL.isEmpty else { return nil }
-        var domain = websiteURL
-            .replacingOccurrences(of: "https://", with: "")
-            .replacingOccurrences(of: "http://", with: "")
-            .replacingOccurrences(of: "www.", with: "")
-        if let slashIndex = domain.firstIndex(of: "/") {
-            domain = String(domain[domain.startIndex..<slashIndex])
-        }
-        guard !domain.isEmpty else { return nil }
-        return URL(string: "https://icons.duckduckgo.com/ip3/\(domain).ico")
-    }
-    
     var balance: Decimal {
         currentBalance
     }
-    
-    // For credit cards, this represents credit limit
+
     var creditLimit: Decimal {
         get { openingBalance }
         set { openingBalance = newValue }
     }
-    
-    // Available credit for credit cards
+
     var availableCredit: Decimal {
         type == .creditCard ? max(0, openingBalance - currentBalance) : 0
+    }
+
+    var nextDueDate: Date? {
+        guard type == .creditCard, let dueDate = nextBillDueDate else { return nil }
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        if dueDate >= today { return dueDate }
+        var candidate = dueDate
+        while candidate < today {
+            guard let next = calendar.date(byAdding: .month, value: 1, to: candidate) else { return nil }
+            candidate = next
+        }
+        return candidate
+    }
+
+    var daysUntilDue: Int? {
+        guard let dueDate = nextDueDate else { return nil }
+        return Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: Date()), to: dueDate).day
+    }
+
+    var isDueSoon: Bool {
+        guard let days = daysUntilDue else { return false }
+        return days <= 5 && days >= 0
+    }
+
+    func advanceDueDateIfNeeded() {
+        guard type == .creditCard, let dueDate = nextBillDueDate else { return }
+        let today = Calendar.current.startOfDay(for: Date())
+        if dueDate < today, let next = nextDueDate {
+            nextBillDueDate = next
+        }
     }
 }
 

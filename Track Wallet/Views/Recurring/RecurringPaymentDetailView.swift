@@ -17,6 +17,7 @@ struct RecurringPaymentDetailView: View {
     @State private var showingDeleteAlert = false
     @State private var showingProcessAlert = false
     @State private var showingCancelAlert = false
+    @State private var notificationDenied = false
 
     var body: some View {
         List {
@@ -67,6 +68,10 @@ struct RecurringPaymentDetailView: View {
                 }
 
                 DetailRow(icon: payment.resolvedPlanType.icon, title: "Type", value: payment.resolvedPlanType.label, color: AppTheme.recurring)
+
+                if payment.isSubscription && payment.frequency != .yearly {
+                    DetailRow(icon: "calendar.badge.clock", title: "Yearly Cost", value: payment.yearlyCost.currencyFormatted, color: AppTheme.expense)
+                }
             } header: {
                 Label("Plan Details", systemImage: "doc.text.fill")
             }
@@ -179,6 +184,29 @@ struct RecurringPaymentDetailView: View {
                         .font(AppTypography.bodyEmphasized)
                         .foregroundColor(statusColor)
                 }
+
+                if payment.isActive && !payment.isCompleted {
+                    HStack(spacing: AppSpacing.sm) {
+                        Image(systemName: "bell.badge.fill")
+                            .foregroundColor(.white)
+                            .frame(width: 32, height: 32)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.transfer))
+                        Text("Reminder")
+                            .font(AppTypography.body)
+                        Spacer()
+                        Menu {
+                            Button("None") { setReminder(-1) }
+                            Button("Same Day") { setReminder(0) }
+                            Button("1 Day Before") { setReminder(1) }
+                            Button("3 Days Before") { setReminder(3) }
+                            Button("7 Days Before") { setReminder(7) }
+                        } label: {
+                            Text(reminderLabel)
+                                .font(AppTypography.bodyEmphasized)
+                                .foregroundColor(AppTheme.primary)
+                        }
+                    }
+                }
             } header: {
                 Label("Schedule", systemImage: "calendar")
             }
@@ -254,6 +282,11 @@ struct RecurringPaymentDetailView: View {
             }
         } message: {
             Text("This will stop future payments for \(payment.name). You can resume it later if needed.")
+        }
+        .alert("Notifications Disabled", isPresented: $notificationDenied) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Enable notifications in Settings to receive payment reminders.")
         }
         .alert("Delete Plan", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
@@ -395,6 +428,33 @@ struct RecurringPaymentDetailView: View {
         return "\(day)\(suffixes[idx])"
     }
 
+    private var reminderLabel: String {
+        switch payment.reminderDays {
+        case 0: return "Same Day"
+        case 1: return "1 Day Before"
+        case 3: return "3 Days Before"
+        case 7: return "7 Days Before"
+        default: return "None"
+        }
+    }
+
+    private func setReminder(_ days: Int) {
+        if days >= 0 {
+            NotificationManager.shared.requestPermission { granted in
+                if granted {
+                    payment.reminderDays = days
+                    NotificationManager.shared.schedulePaymentReminder(for: payment)
+                    HapticManager.notification(.success)
+                } else {
+                    notificationDenied = true
+                }
+            }
+        } else {
+            payment.reminderDays = -1
+            NotificationManager.shared.removeReminder(for: payment)
+        }
+    }
+
     private func processPayment() {
         guard let account = payment.account else { return }
         guard payment.isActive, !payment.isCompleted else { return }
@@ -423,6 +483,12 @@ struct RecurringPaymentDetailView: View {
 
         modelContext.insert(transaction)
         payment.advanceToNextPayment()
+
+        if payment.reminderDays >= 0 {
+            NotificationManager.shared.schedulePaymentReminder(for: payment)
+        }
+
+        HapticManager.notification(.success)
     }
 }
 

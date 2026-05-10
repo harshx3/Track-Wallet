@@ -14,8 +14,11 @@ struct AddTransactionView: View {
 
     @Query private var accounts: [Account]
     @Query(sort: \Category.name) private var categories: [Category]
+    @Query(sort: \TransactionTemplate.usageCount, order: .reverse) private var templates: [TransactionTemplate]
 
     @State private var amount = ""
+    @State private var saveAsTemplate = false
+    @State private var templateName = ""
     @State private var transactionType: TransactionType = .expense
     @State private var selectedAccount: Account?
     @State private var selectedToAccount: Account?
@@ -68,6 +71,45 @@ struct AddTransactionView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if !templates.isEmpty {
+                    Section {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(templates.prefix(6)) { template in
+                                    Button {
+                                        applyTemplate(template)
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: template.category?.icon ?? "bolt.fill")
+                                                .font(.caption)
+                                            VStack(alignment: .leading, spacing: 1) {
+                                                Text(template.name)
+                                                    .font(AppTypography.caption)
+                                                    .fontWeight(.semibold)
+                                                Text(template.amount.currencyFormatted)
+                                                    .font(.caption2)
+                                            }
+                                        }
+                                        .foregroundStyle(AppTheme.textPrimary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10)
+                                                .fill(Color(.systemGray6))
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 2)
+                        }
+                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    } header: {
+                        Label("Quick Add", systemImage: "bolt.fill")
+                    }
+                }
+
                 Section {
                     Picker("Type", selection: $transactionType) {
                         ForEach(TransactionType.allCases, id: \.self) { type in
@@ -91,6 +133,31 @@ struct AddTransactionView: View {
                             .focused($focusedField, equals: .amount)
                     }
                     .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 16))
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach([3, 5, 10, 20, 50, 100], id: \.self) { quickAmount in
+                                Button {
+                                    amount = "\(quickAmount)"
+                                } label: {
+                                    Text("$\(quickAmount)")
+                                        .font(AppTypography.caption)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(amount == "\(quickAmount)" ? .white : AppTheme.primary)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(amount == "\(quickAmount)" ? AppTheme.primary : AppTheme.primary.opacity(0.1))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 2)
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
 
                     DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 } header: {
@@ -145,6 +212,7 @@ struct AddTransactionView: View {
                                     )
                                 }
                             }
+                            .padding(.horizontal, 16)
                             .padding(.vertical, 4)
                         }
                         .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
@@ -235,6 +303,17 @@ struct AddTransactionView: View {
                         .focused($focusedField, equals: .description)
                 } header: {
                     Text("Description (Optional)")
+                }
+
+                Section {
+                    Toggle("Save as Template", isOn: $saveAsTemplate)
+                    if saveAsTemplate {
+                        TextField("Template Name", text: $templateName)
+                    }
+                } footer: {
+                    if saveAsTemplate {
+                        Text("Quickly reuse this transaction later.")
+                    }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -360,7 +439,29 @@ struct AddTransactionView: View {
         }
 
         modelContext.insert(transaction)
+        HapticManager.notification(.success)
+
+        if saveAsTemplate && !templateName.trimmingCharacters(in: .whitespaces).isEmpty {
+            let template = TransactionTemplate(
+                name: templateName.trimmingCharacters(in: .whitespaces),
+                amount: amountValue,
+                type: transactionType,
+                account: account,
+                category: selectedCategory
+            )
+            modelContext.insert(template)
+        }
+
         dismiss()
+    }
+
+    private func applyTemplate(_ template: TransactionTemplate) {
+        amount = "\(template.amount)"
+        transactionType = template.type
+        selectedCategory = template.category
+        selectedAccount = template.account
+        transactionDescription = template.name
+        template.usageCount += 1
     }
 }
 

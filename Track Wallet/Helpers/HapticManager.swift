@@ -1,0 +1,22 @@
+//
+//  HapticManager.swift
+//  Track Wallet
+//
+//  Created by Harsh Makwana on 5/8/26.
+//
+
+import UIKit
+
+enum HapticManager {
+    static func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .medium) {
+        UIImpactFeedbackGenerator(style: style).impactOccurred()
+    }
+
+    static func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        UINotificationFeedbackGenerator().notificationOccurred(type)
+    }
+
+    static func selection() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+}

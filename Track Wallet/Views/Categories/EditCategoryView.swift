@@ -18,6 +18,8 @@ struct EditCategoryView: View {
     @State private var selectedIcon = "folder.fill"
     @State private var showingIconPicker = false
     @State private var customColor = Color.blue
+    @State private var hasBudget = false
+    @State private var budgetAmount = ""
 
     let colors = String.namedColors
 
@@ -98,6 +100,29 @@ struct EditCategoryView: View {
                 } header: {
                     Text("Color")
                 }
+
+                if category.type == .expense {
+                    Section {
+                        Toggle("Set Monthly Budget", isOn: $hasBudget.animation(.easeInOut(duration: 0.2)))
+
+                        if hasBudget {
+                            HStack {
+                                Text("$")
+                                    .foregroundStyle(.secondary)
+                                TextField("0.00", text: $budgetAmount)
+                                    .keyboardType(.decimalPad)
+                                Text("/month")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } header: {
+                        Text("Budget")
+                    } footer: {
+                        if hasBudget {
+                            Text("Track spending against this limit each month.")
+                        }
+                    }
+                }
             }
             .navigationTitle("Edit Category")
             .navigationBarTitleDisplayMode(.inline)
@@ -117,6 +142,10 @@ struct EditCategoryView: View {
                 selectedColor = category.color
                 selectedIcon = category.icon
                 customColor = category.color.toColor
+                hasBudget = category.monthlyBudget > 0
+                if category.monthlyBudget > 0 {
+                    budgetAmount = "\(category.monthlyBudget)"
+                }
             }
             .sheet(isPresented: $showingIconPicker) {
                 IconPickerView(
@@ -132,6 +161,7 @@ struct EditCategoryView: View {
         category.name = name
         category.icon = selectedIcon
         category.color = selectedColor
+        category.monthlyBudget = hasBudget ? (Decimal(string: budgetAmount) ?? 0) : 0
         dismiss()
     }
 }

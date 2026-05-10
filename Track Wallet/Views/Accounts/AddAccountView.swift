@@ -21,6 +21,8 @@ struct AddAccountView: View {
     @State private var isPaymentMethod = true
     @State private var selectedPaymentMethods: Set<String> = []
     @State private var websiteURL = ""
+    @State private var hasDueDate = false
+    @State private var nextDueDate = Date()
     @State private var showingIconPicker = false
     @State private var customColor = Color.blue
     @FocusState private var focusedField: Field?
@@ -94,6 +96,37 @@ struct AddAccountView: View {
                     Text("Balance")
                 }
 
+                Section {
+                    TextField("e.g. chase.com", text: $websiteURL)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .websiteURL)
+                } header: {
+                    Text("Website")
+                } footer: {
+                    Text("Used to show the account's logo.")
+                }
+
+                if accountType == .creditCard {
+                    Section {
+                        Toggle("Set Due Date", isOn: $hasDueDate.animation())
+
+                        if hasDueDate {
+                            DatePicker(
+                                "Next Due Date",
+                                selection: $nextDueDate,
+                                in: Date()...,
+                                displayedComponents: .date
+                            )
+                        }
+                    } header: {
+                        Text("Billing")
+                    } footer: {
+                        Text("Set your next bill due date to get payment reminders. It auto-advances each month.")
+                    }
+                }
+
                 if accountType != .creditCard {
                     Section {
                         ForEach(availablePaymentMethods, id: \.self) { method in
@@ -124,33 +157,6 @@ struct AddAccountView: View {
                         Text("Select payment methods available for this account")
                             .font(.caption)
                     }
-                }
-
-                Section {
-                    HStack {
-                        Image(systemName: "globe")
-                            .foregroundStyle(.secondary)
-                        TextField("e.g. chase.com", text: $websiteURL)
-                            .keyboardType(.URL)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .focused($focusedField, equals: .websiteURL)
-                    }
-
-                    if !websiteURL.isEmpty {
-                        HStack {
-                            Text("Preview")
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            let previewAccount = Account(name: "", type: .bank, icon: selectedIcon, color: selectedColor, websiteURL: websiteURL)
-                            AccountIconView(account: previewAccount, size: 32)
-                        }
-                    }
-                } header: {
-                    Text("Website Icon (Optional)")
-                } footer: {
-                    Text("Enter a website to use its icon for this account")
-                        .font(.caption)
                 }
 
                 Section {
@@ -280,8 +286,16 @@ struct AddAccountView: View {
             paymentMethods: Array(selectedPaymentMethods),
             websiteURL: websiteURL.trimmingCharacters(in: .whitespaces)
         )
+        if accountType == .creditCard && hasDueDate {
+            account.nextBillDueDate = nextDueDate
+        }
 
         modelContext.insert(account)
+
+        if accountType == .creditCard && hasDueDate {
+            NotificationManager.shared.scheduleDueDateReminder(for: account)
+        }
+
         dismiss()
     }
 }

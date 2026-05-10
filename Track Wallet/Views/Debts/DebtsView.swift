@@ -53,7 +53,6 @@ struct DebtsView: View {
     }
 
     var body: some View {
-        NavigationStack {
             List {
                 if netReceivable > 0 || netPayable > 0 {
                     Section {
@@ -105,11 +104,19 @@ struct DebtsView: View {
                 }
 
                 if displayGroups.isEmpty {
-                    ContentUnavailableView(
-                        emptyStateTitle,
-                        systemImage: emptyStateIcon,
-                        description: Text(emptyStateDescription)
-                    )
+                    ContentUnavailableView {
+                        Label(emptyStateTitle, systemImage: emptyStateIcon)
+                    } description: {
+                        Text(emptyStateDescription)
+                    } actions: {
+                        if debts.isEmpty {
+                            Button {
+                                showingAddDebt = true
+                            } label: {
+                                Label("Add Debt", systemImage: "plus.circle.fill")
+                            }
+                        }
+                    }
                 } else {
                     Section {
                         ForEach(displayGroups) { group in
@@ -133,7 +140,6 @@ struct DebtsView: View {
             .sheet(isPresented: $showingAddDebt) {
                 AddDebtView()
             }
-        }
     }
 
     private var emptyStateTitle: String {
@@ -200,6 +206,14 @@ struct PersonDebtGroup: Identifiable {
     var hasBorrowing: Bool {
         debts.contains { $0.type == .borrowing && !$0.isPaid }
     }
+
+    var lastActivityDate: Date? {
+        debts.map(\.date).max()
+    }
+
+    var totalCount: Int {
+        debts.count
+    }
 }
 
 // MARK: - Person Debt Row
@@ -260,6 +274,12 @@ struct PersonDebtRow: View {
                         }
                     }
                 }
+
+                if let lastDate = group.lastActivityDate {
+                    Text("\(group.totalCount) debt\(group.totalCount == 1 ? "" : "s") · \(lastDate.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.caption2)
+                        .foregroundColor(AppTheme.textTertiary)
+                }
             }
 
             Spacer()
@@ -296,9 +316,20 @@ struct PersonDebtsDetailView: View {
     let personName: String
     @Query(sort: \Debt.date, order: .reverse) private var allDebts: [Debt]
     @State private var showingAddEntry = false
+    @State private var showingShareReminder = false
 
     init(personName: String) {
         self.personName = personName
+    }
+
+    private var reminderMessage: String {
+        if netBalance > 0 {
+            return "Hey \(personName), just a friendly reminder that you have \(netBalance.currencyFormatted) pending. Please send when you can. Thanks!"
+        } else if netBalance < 0 {
+            return "Hey \(personName), just a reminder that I owe you \(abs(netBalance).currencyFormatted). I'll send it soon."
+        } else {
+            return "Hey \(personName), just confirming we're all settled up. Thanks!"
+        }
     }
 
     var personDebts: [Debt] {
@@ -434,12 +465,36 @@ struct PersonDebtsDetailView: View {
                 } label: {
                     Label("Add Entry", systemImage: "plus.circle")
                 }
+
+                if netBalance != 0 {
+                    Button {
+                        showingShareReminder = true
+                    } label: {
+                        Label("Send Reminder", systemImage: "paperplane")
+                            .foregroundColor(AppTheme.primary)
+                    }
+                }
+
+                if !activeDebts.isEmpty {
+                    Button {
+                        for debt in activeDebts {
+                            debt.isPaid = true
+                        }
+                        HapticManager.notification(.success)
+                    } label: {
+                        Label("Settle All", systemImage: "checkmark.circle")
+                            .foregroundColor(AppTheme.income)
+                    }
+                }
             }
         }
         .navigationTitle(personName)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingAddEntry) {
             AddDebtView(existingPersonName: personName)
+        }
+        .sheet(isPresented: $showingShareReminder) {
+            ShareReminderView(message: reminderMessage)
         }
     }
 }
@@ -521,6 +576,18 @@ struct DebtEntryRow: View {
     }
 }
 
+// MARK: - Share Reminder
+
+struct ShareReminderView: UIViewControllerRepresentable {
+    let message: String
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [message], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
 // MARK: - Filter
 
 enum DebtFilterType: String, CaseIterable {
@@ -532,6 +599,8 @@ enum DebtFilterType: String, CaseIterable {
 }
 
 #Preview {
-    DebtsView()
-        .modelContainer(for: [Account.self, Transaction.self, Category.self, Debt.self])
+    NavigationStack {
+        DebtsView()
+    }
+    .modelContainer(for: [Account.self, Transaction.self, Category.self, Debt.self])
 }
