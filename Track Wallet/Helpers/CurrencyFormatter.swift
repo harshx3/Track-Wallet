@@ -43,19 +43,19 @@ extension String {
 private let sharedCurrencyFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.numberStyle = .currency
-    formatter.currencyCode = "USD"
+    formatter.locale = Locale.current
     formatter.maximumFractionDigits = 2
     return formatter
 }()
 
 extension Decimal {
     var currencyFormatted: String {
-        sharedCurrencyFormatter.string(from: self as NSDecimalNumber) ?? "$0.00"
+        sharedCurrencyFormatter.string(from: self as NSDecimalNumber) ?? "\(Locale.current.currencySymbol ?? "$")0.00"
     }
 }
 
 extension Double {
     var currencyFormatted: String {
-        sharedCurrencyFormatter.string(from: self as NSNumber) ?? "$0.00"
+        sharedCurrencyFormatter.string(from: self as NSNumber) ?? "\(Locale.current.currencySymbol ?? "$")0.00"
     }
 }

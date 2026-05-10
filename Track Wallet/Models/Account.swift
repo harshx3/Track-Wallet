@@ -69,6 +69,9 @@ final class Account {
         self.websiteURL = websiteURL
         self.outgoingTransactions = []
         self.incomingTransactions = []
+        self.recurringPayments = []
+        self.debts = []
+        self.templates = []
     }
 
     var balance: Decimal {

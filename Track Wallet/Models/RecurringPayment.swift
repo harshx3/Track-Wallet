@@ -178,11 +178,13 @@ final class RecurringPayment {
         frequency: PaymentFrequency
     ) -> Date {
         let calendar = Calendar.current
-        var components = calendar.dateComponents([.year, .month], from: startDate)
-        let clampedDay = min(dayOfMonth, daysInMonth(year: components.year!, month: components.month!))
-        components.day = clampedDay
+        let components = calendar.dateComponents([.year, .month], from: startDate)
+        guard let year = components.year, let month = components.month else { return startDate }
+        let clampedDay = min(dayOfMonth, daysInMonth(year: year, month: month))
+        var dateComponents = components
+        dateComponents.day = clampedDay
 
-        guard let candidate = calendar.date(from: components) else { return startDate }
+        guard let candidate = calendar.date(from: dateComponents) else { return startDate }
 
         if candidate >= calendar.startOfDay(for: startDate) {
             return candidate
@@ -206,23 +208,19 @@ final class RecurringPayment {
             next = calendar.date(byAdding: .weekOfYear, value: 2, to: currentDate)
         case .monthly:
             var comps = calendar.dateComponents([.year, .month], from: currentDate)
-            comps.month! += 1
-            if comps.month! > 12 {
-                comps.month = 1
-                comps.year! += 1
-            }
-            let maxDay = daysInMonth(year: comps.year!, month: comps.month!)
-            comps.day = min(dayOfMonth, maxDay)
+            guard var m = comps.month, var y = comps.year else { return currentDate }
+            m += 1
+            if m > 12 { m = 1; y += 1 }
+            comps.month = m; comps.year = y
+            comps.day = min(dayOfMonth, daysInMonth(year: y, month: m))
             next = calendar.date(from: comps)
         case .quarterly:
             var comps = calendar.dateComponents([.year, .month], from: currentDate)
-            comps.month! += 3
-            while comps.month! > 12 {
-                comps.month! -= 12
-                comps.year! += 1
-            }
-            let maxDay = daysInMonth(year: comps.year!, month: comps.month!)
-            comps.day = min(dayOfMonth, maxDay)
+            guard var m = comps.month, var y = comps.year else { return currentDate }
+            m += 3
+            while m > 12 { m -= 12; y += 1 }
+            comps.month = m; comps.year = y
+            comps.day = min(dayOfMonth, daysInMonth(year: y, month: m))
             next = calendar.date(from: comps)
         case .yearly:
             next = calendar.date(byAdding: .year, value: 1, to: currentDate)

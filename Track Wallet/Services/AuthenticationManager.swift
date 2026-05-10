@@ -33,11 +33,17 @@ final class AuthenticationManager {
             kSecAttrAccount as String: userIDKey,
             kSecAttrService as String: Bundle.main.bundleIdentifier ?? "com.trackwallet"
         ]
-        SecItemDelete(query as CFDictionary)
-        
+        let deleteStatus = SecItemDelete(query as CFDictionary)
+        if deleteStatus != errSecSuccess && deleteStatus != errSecItemNotFound {
+            print("[Keychain] Delete failed: \(deleteStatus)")
+        }
+
         var addQuery = query
         addQuery[kSecValueData as String] = data
-        SecItemAdd(addQuery as CFDictionary, nil)
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus != errSecSuccess {
+            print("[Keychain] Save failed: \(addStatus)")
+        }
     }
     
     private func loadFromKeychain() -> String? {
@@ -64,7 +70,10 @@ final class AuthenticationManager {
             kSecAttrAccount as String: userIDKey,
             kSecAttrService as String: Bundle.main.bundleIdentifier ?? "com.trackwallet"
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        if status != errSecSuccess && status != errSecItemNotFound {
+            print("[Keychain] Delete failed: \(status)")
+        }
     }
     
     // MARK: - User Info (UserDefaults — name/email are non-sensitive)
@@ -102,11 +111,13 @@ final class AuthenticationManager {
             return
         }
 
+        #if DEBUG
         if userID == "mock_user_id" {
             isAuthenticated = true
             isCheckingCredential = false
             return
         }
+        #endif
 
         let provider = ASAuthorizationAppleIDProvider()
         provider.getCredentialState(forUserID: userID) { state, _ in
@@ -125,12 +136,14 @@ final class AuthenticationManager {
         }
     }
 
+    #if DEBUG
     func mockSignIn() {
         saveToKeychain(userID: "mock_user_id")
         saveUserInfo(name: "User", email: "")
         isAuthenticated = true
     }
-    
+    #endif
+
     // MARK: - Sign In
     
     func handleSignInResult(_ result: Result<ASAuthorization, any Error>) {

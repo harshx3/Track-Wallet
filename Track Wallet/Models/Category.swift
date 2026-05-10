@@ -44,6 +44,8 @@ final class Category {
         self.createdAt = createdAt
         self.monthlyBudget = monthlyBudget
         self.transactions = []
+        self.recurringPayments = []
+        self.templates = []
     }
 
     var hasBudget: Bool {

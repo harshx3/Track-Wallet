@@ -213,6 +213,7 @@ struct AppLockView: View {
             }
         } else {
             isAuthenticating = false
+            onUnlock()
         }
     }
 }

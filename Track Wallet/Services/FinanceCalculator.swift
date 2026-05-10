@@ -100,7 +100,7 @@ class FinanceCalculator {
 
     var topSpendingCategory: (name: String, icon: String, amount: Decimal)? {
         let expenses = currentMonthTransactions.filter { $0.type == .expense && $0.category != nil }
-        let grouped = Dictionary(grouping: expenses) { $0.category!.name }
+        let grouped = Dictionary(grouping: expenses) { $0.category?.name ?? "" }
         guard let top = grouped.max(by: { a, b in
             a.value.reduce(Decimal(0)) { $0 + $1.amount } < b.value.reduce(Decimal(0)) { $0 + $1.amount }
         }) else { return nil }
@@ -120,7 +120,7 @@ class FinanceCalculator {
 
     var categoryBreakdown: [CategorySpending] {
         let expenses = currentMonthTransactions.filter { $0.type == .expense && $0.category != nil }
-        let grouped = Dictionary(grouping: expenses) { $0.category!.id }
+        let grouped = Dictionary(grouping: expenses) { $0.category?.id ?? UUID() }
         let total = monthlySpending
         guard total > 0 else { return [] }
 

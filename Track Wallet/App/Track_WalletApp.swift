@@ -11,7 +11,8 @@ import SwiftData
 @main
 struct Track_WalletApp: App {
     let modelContainer: ModelContainer
-    @State private var authManager = AuthenticationManager()
+    private let authManager = AuthenticationManager()
+    @State private var containerFailed = false
 
     init() {
         let schema = Schema([
@@ -23,13 +24,15 @@ struct Track_WalletApp: App {
             TransactionTemplate.self
         ])
 
+        var container: ModelContainer?
+
         do {
             let configuration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: false,
                 cloudKitDatabase: .automatic
             )
-            modelContainer = try ModelContainer(for: schema, configurations: [configuration])
+            container = try ModelContainer(for: schema, configurations: [configuration])
         } catch {
             let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
             for suffix in ["", "-wal", "-shm"] {
@@ -43,11 +46,21 @@ struct Track_WalletApp: App {
                     isStoredInMemoryOnly: false,
                     cloudKitDatabase: .automatic
                 )
-                modelContainer = try ModelContainer(for: schema, configurations: [configuration])
+                container = try ModelContainer(for: schema, configurations: [configuration])
             } catch {
-                fatalError("Failed to create ModelContainer after reset: \(error)")
+                container = try? ModelContainer(
+                    for: schema,
+                    configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]
+                )
             }
         }
+
+        modelContainer = container ?? {
+            try! ModelContainer(
+                for: schema,
+                configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]
+            )
+        }()
     }
 
     var body: some Scene {
