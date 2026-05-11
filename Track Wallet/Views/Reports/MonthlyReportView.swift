@@ -14,11 +14,14 @@ struct MonthlyReportView: View {
     @Query private var recurringPayments: [RecurringPayment]
 
     @State private var selectedMonth = Date()
-    @State private var activeExport: ExportType?
+    @State private var exportFileURL: URL?
+    @State private var showingShareSheet = false
+    @State private var showingNoDataAlert = false
+    @State private var showingExportError = false
+    @State private var exportErrorMessage = ""
 
-    enum ExportType: Identifiable {
+    private enum ExportType {
         case csv, pdf
-        var id: Self { self }
     }
 
     private var monthTransactions: [Transaction] {
@@ -73,17 +76,20 @@ struct MonthlyReportView: View {
             exportSection
         }
         .navigationTitle("Reports")
-        .sheet(item: $activeExport) { type in
-            switch type {
-            case .csv:
-                if let url = createCSVFile() {
-                    ShareSheetView(items: [url])
-                }
-            case .pdf:
-                if let url = createPDFFile() {
-                    ShareSheetView(items: [url])
-                }
+        .sheet(isPresented: $showingShareSheet) {
+            if let url = exportFileURL {
+                ShareSheetView(items: [url])
             }
+        }
+        .alert("No Data", isPresented: $showingNoDataAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("There are no transactions for the selected month.")
+        }
+        .alert("Export Failed", isPresented: $showingExportError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(exportErrorMessage)
         }
     }
 
@@ -259,14 +265,14 @@ struct MonthlyReportView: View {
     private var exportSection: some View {
         Section {
             Button {
-                activeExport = .csv
+                exportFile(.csv)
             } label: {
                 Label("Export CSV", systemImage: "tablecells")
                     .foregroundColor(AppTheme.primary)
             }
 
             Button {
-                activeExport = .pdf
+                exportFile(.pdf)
             } label: {
                 Label("Export PDF", systemImage: "doc.richtext")
                     .foregroundColor(AppTheme.primary)
@@ -276,6 +282,35 @@ struct MonthlyReportView: View {
         } footer: {
             Text("Share your monthly financial report.")
         }
+    }
+
+    private func exportFile(_ type: ExportType) {
+        guard !monthTransactions.isEmpty else {
+            showingNoDataAlert = true
+            return
+        }
+
+        let url: URL?
+        switch type {
+        case .csv: url = createCSVFile()
+        case .pdf: url = createPDFFile()
+        }
+
+        guard let fileURL = url, validateFile(at: fileURL) else {
+            exportErrorMessage = "Could not create the \(type == .csv ? "CSV" : "PDF") file. Please try again."
+            showingExportError = true
+            return
+        }
+
+        exportFileURL = fileURL
+        showingShareSheet = true
+    }
+
+    private func validateFile(at url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let size = attrs[.size] as? UInt64, size > 0 else { return false }
+        return true
     }
 
     private var monthFileName: String {
@@ -303,6 +338,7 @@ struct MonthlyReportView: View {
         numberFormatter.numberStyle = .decimal
         numberFormatter.minimumFractionDigits = 2
         numberFormatter.maximumFractionDigits = 2
+        numberFormatter.locale = Locale(identifier: "en_US_POSIX")
 
         for txn in monthTransactions.sorted(by: { $0.date < $1.date }) {
             let date = dateFormatter.string(from: txn.date)
@@ -315,6 +351,7 @@ struct MonthlyReportView: View {
         }
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("WalletFlows_Report_\(monthFileName).csv")
+        try? FileManager.default.removeItem(at: url)
         do {
             try csv.write(to: url, atomically: true, encoding: .utf8)
             return url
@@ -341,8 +378,10 @@ struct MonthlyReportView: View {
         renderer.scale = 2.0
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("WalletFlows_Report_\(monthFileName).pdf")
+        try? FileManager.default.removeItem(at: url)
 
         renderer.render { size, context in
+            guard size.width > 0, size.height > 0 else { return }
             var box = CGRect(x: 0, y: 0, width: size.width, height: size.height)
             guard let pdf = CGContext(url as CFURL, mediaBox: &box, nil) else { return }
             pdf.beginPDFPage(nil)
@@ -351,7 +390,7 @@ struct MonthlyReportView: View {
             pdf.closePDF()
         }
 
-        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        return url
     }
 }
 
