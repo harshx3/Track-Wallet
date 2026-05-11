@@ -271,27 +271,7 @@ struct TransactionsView: View {
         HapticManager.notification(.warning)
         for index in offsets {
             let transaction = txns[index]
-            switch transaction.type {
-            case .income:
-                transaction.fromAccount?.currentBalance -= transaction.amount
-            case .expense:
-                if transaction.fromAccount?.type == .creditCard {
-                    transaction.fromAccount?.currentBalance -= transaction.amount
-                } else {
-                    transaction.fromAccount?.currentBalance += transaction.amount
-                }
-            case .transfer:
-                transaction.fromAccount?.currentBalance += transaction.amount
-                if let toAccount = transaction.toAccount {
-                    if toAccount.isAsset {
-                        toAccount.currentBalance -= transaction.amount
-                    } else {
-                        toAccount.currentBalance += transaction.amount
-                    }
-                }
-            case .reimbursed:
-                transaction.fromAccount?.currentBalance -= transaction.amount
-            }
+            BalanceService.reverseBalanceChange(for: transaction)
             modelContext.delete(transaction)
         }
     }

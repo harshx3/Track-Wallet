@@ -416,29 +416,8 @@ struct AddTransactionView: View {
             category: selectedCategory
         )
 
-        switch transactionType {
-        case .income:
-            account.currentBalance += amountValue
-        case .expense:
-            if account.type == .creditCard {
-                account.currentBalance += amountValue
-            } else {
-                account.currentBalance -= amountValue
-            }
-        case .transfer:
-            account.currentBalance -= amountValue
-            if let toAccount = selectedToAccount {
-                if toAccount.isAsset {
-                    toAccount.currentBalance += amountValue
-                } else {
-                    toAccount.currentBalance -= amountValue
-                }
-            }
-        case .reimbursed:
-            account.currentBalance += amountValue
-        }
-
         modelContext.insert(transaction)
+        BalanceService.applyBalanceChange(for: transaction)
         HapticManager.notification(.success)
 
         if saveAsTemplate && !templateName.trimmingCharacters(in: .whitespaces).isEmpty {

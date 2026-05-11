@@ -184,36 +184,17 @@ struct AppLockView: View {
 
         let context = LAContext()
         context.localizedFallbackTitle = "Use Passcode"
-        var error: NSError?
 
-        // Prefer biometrics (Face ID / Touch ID) first
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Unlock Wallet Flows") { success, _ in
-                DispatchQueue.main.async {
-                    isAuthenticating = false
-                    if success {
-                        HapticManager.notification(.success)
-                        onUnlock()
-                    } else {
-                        authFailed = true
-                    }
+        AppLockService.authenticate(using: context, reason: "Unlock Wallet Flows") { success in
+            DispatchQueue.main.async {
+                isAuthenticating = false
+                if success {
+                    HapticManager.notification(.success)
+                    onUnlock()
+                } else {
+                    authFailed = true
                 }
             }
-        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
-            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: "Unlock Wallet Flows") { success, _ in
-                DispatchQueue.main.async {
-                    isAuthenticating = false
-                    if success {
-                        HapticManager.notification(.success)
-                        onUnlock()
-                    } else {
-                        authFailed = true
-                    }
-                }
-            }
-        } else {
-            isAuthenticating = false
-            onUnlock()
         }
     }
 }

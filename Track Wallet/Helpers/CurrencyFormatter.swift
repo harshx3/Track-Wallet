@@ -40,7 +40,7 @@ extension String {
     }
 }
 
-private let sharedCurrencyFormatter: NumberFormatter = {
+let sharedCurrencyFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.numberStyle = .currency
     formatter.locale = Locale.current
