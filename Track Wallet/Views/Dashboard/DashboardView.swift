@@ -205,31 +205,19 @@ struct DashboardView: View {
         if !liabilityAccounts.isEmpty {
             Section {
                 if !creditCards.isEmpty && calculator.totalCreditLimit > 0 {
-                    VStack(spacing: AppSpacing.xs) {
+                    VStack(spacing: AppSpacing.sm) {
                         HStack(alignment: .firstTextBaseline) {
                             Text("Overall Utilization")
                                 .font(AppTypography.caption)
                                 .foregroundColor(AppTheme.textSecondary)
                             Spacer()
                             Text("\(Int(calculator.creditUtilization * 100))%")
-                                .font(AppTypography.bodyEmphasized)
-                                .foregroundColor(utilizationColor(calculator.creditUtilization))
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                .foregroundColor(AppTheme.utilizationColor(calculator.creditUtilization))
                                 .contentTransition(.numericText())
                         }
 
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color(.systemGray5))
-                                    .frame(height: 6)
-
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(utilizationColor(calculator.creditUtilization))
-                                    .frame(width: max(0, geo.size.width * calculator.creditUtilization), height: 6)
-                                    .animation(.easeInOut(duration: 0.6), value: calculator.creditUtilization)
-                            }
-                        }
-                        .frame(height: 6)
+                        UtilizationGauge(value: calculator.creditUtilization, height: 8)
 
                         HStack {
                             Text("\(calculator.totalCreditDue.currencyFormatted) of \(calculator.totalCreditLimit.currencyFormatted)")
@@ -261,12 +249,6 @@ struct DashboardView: View {
                 }
             }
         }
-    }
-
-    private func utilizationColor(_ value: Double) -> Color {
-        if value < 0.3 { return AppTheme.income }
-        if value < 0.7 { return AppTheme.transfer }
-        return AppTheme.expense
     }
 
     // MARK: - Assets
@@ -399,24 +381,22 @@ struct MonthStatCard: View {
     let color: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(AppTypography.caption)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.5)
                 .foregroundColor(color)
             Text(value)
-                .font(AppTypography.bodyEmphasized)
+                .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundColor(AppTheme.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
                 .contentTransition(.numericText())
                 .animation(.easeInOut(duration: 0.3), value: value)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(AppSpacing.sm)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.sm)
-                .fill(color.opacity(0.08))
-        )
+        .padding(AppSpacing.md)
+        .premiumCard(radius: AppRadius.sm)
     }
 }
 
@@ -429,13 +409,11 @@ struct BudgetProgressRow: View {
     private var progress: Double { category.budgetProgress() }
 
     private var progressColor: Color {
-        if progress < 0.6 { return AppTheme.income }
-        if progress < 0.9 { return AppTheme.transfer }
-        return AppTheme.expense
+        AppTheme.utilizationColor(progress, warningAt: 0.7, dangerAt: 0.9)
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: category.icon)
@@ -450,13 +428,13 @@ struct BudgetProgressRow: View {
                     .foregroundColor(AppTheme.textSecondary)
             }
 
-            ProgressView(value: min(1.0, progress))
-                .tint(progressColor)
+            UtilizationGauge(value: progress, height: 6, warningAt: 0.7, dangerAt: 0.9)
 
             HStack {
                 Text("\(Int(min(100, progress * 100)))% used")
-                    .font(AppTypography.caption)
+                    .font(.system(.caption, design: .rounded, weight: .semibold))
                     .foregroundColor(progressColor)
+                    .contentTransition(.numericText())
                 Spacer()
                 let remaining = category.monthlyBudget - spent
                 Text(remaining >= 0 ? "\(remaining.currencyFormatted) left" : "\(abs(remaining).currencyFormatted) over")
@@ -464,7 +442,7 @@ struct BudgetProgressRow: View {
                     .foregroundColor(remaining >= 0 ? AppTheme.textSecondary : AppTheme.expense)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
     }
 }
 
@@ -483,7 +461,7 @@ struct DashboardCard: View {
                 .foregroundColor(.white)
                 .frame(width: 36, height: 36)
                 .background(
-                    RoundedRectangle(cornerRadius: AppRadius.xs)
+                    RoundedRectangle(cornerRadius: AppRadius.xs, style: .continuous)
                         .fill(
                             LinearGradient(
                                 colors: gradient,
@@ -493,24 +471,22 @@ struct DashboardCard: View {
                         )
                 )
 
-            Text(title)
-                .font(AppTypography.caption)
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.5)
                 .foregroundColor(AppTheme.textSecondary)
 
             Text(amount)
-                .font(AppTypography.amountSmall)
+                .font(.system(.title3, design: .rounded, weight: .bold))
                 .foregroundColor(AppTheme.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
                 .contentTransition(.numericText())
                 .animation(.easeInOut(duration: 0.3), value: amount)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(AppSpacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.md)
-                .fill(AppTheme.cardBackground)
-        )
+        .premiumCard()
     }
 }
 
@@ -633,10 +609,7 @@ struct EmptyDashboardAction: View {
                 .foregroundColor(AppTheme.textTertiary)
         }
         .padding(AppSpacing.md)
-        .background(
-            RoundedRectangle(cornerRadius: AppRadius.md)
-                .fill(AppTheme.cardBackground)
-        )
+        .premiumCard()
     }
 }
 
@@ -692,12 +665,6 @@ struct CreditCardRow: View {
         return value.isFinite ? min(1, max(0, value)) : 0
     }
 
-    private var utilizationColor: Color {
-        if utilization < 0.3 { return AppTheme.income }
-        if utilization < 0.7 { return AppTheme.transfer }
-        return AppTheme.expense
-    }
-
     private var hasBalance: Bool {
         account.currentBalance > 0
     }
@@ -706,36 +673,25 @@ struct CreditCardRow: View {
         HStack(spacing: AppSpacing.sm) {
             AccountIconView(account: account, size: 36, cornerRadius: AppRadius.xs)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(account.name)
                     .font(AppTypography.body)
                     .lineLimit(1)
 
                 if account.type == .creditCard && account.creditLimit > 0 {
                     if hasBalance {
-                        HStack(spacing: 6) {
-                            GeometryReader { geo in
-                                ZStack(alignment: .leading) {
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(Color(.systemGray5))
-                                        .frame(height: 4)
-
-                                    RoundedRectangle(cornerRadius: 3)
-                                        .fill(utilizationColor)
-                                        .frame(width: max(0, geo.size.width * utilization), height: 4)
-                                        .animation(.easeInOut(duration: 0.5), value: utilization)
-                                }
-                            }
-                            .frame(height: 4)
+                        HStack(spacing: 8) {
+                            UtilizationGauge(value: utilization, height: 4)
 
                             Text("\(Int(utilization * 100))%")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(utilizationColor)
-                                .frame(width: 28, alignment: .trailing)
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundColor(AppTheme.utilizationColor(utilization))
+                                .frame(width: 30, alignment: .trailing)
+                                .contentTransition(.numericText())
                         }
                     } else {
                         Text(account.currentBalance < 0 ? "Credit" : "Paid off")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundColor(AppTheme.income)
                     }
                 }
