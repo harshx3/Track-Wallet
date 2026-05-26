@@ -22,7 +22,7 @@ final class AppLockServiceTests: XCTestCase {
             }
         }
 
-        func evaluatePolicy(_ policy: LAPolicy, localizedReason: String, reply: @escaping (Bool, (any Error)?) -> Void) {
+        func evaluatePolicy(_ policy: LAPolicy, localizedReason: String, reply: @Sendable @escaping (Bool, (any Error)?) -> Void) {
             reply(shouldSucceed, nil)
         }
     }

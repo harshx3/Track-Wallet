@@ -3,7 +3,7 @@ import LocalAuthentication
 
 protocol BiometricEvaluator {
     func canEvaluatePolicy(_ policy: LAPolicy, error: NSErrorPointer) -> Bool
-    func evaluatePolicy(_ policy: LAPolicy, localizedReason: String, reply: @escaping (Bool, (any Error)?) -> Void)
+    func evaluatePolicy(_ policy: LAPolicy, localizedReason: String, reply: @Sendable @escaping (Bool, (any Error)?) -> Void)
 }
 
 extension LAContext: BiometricEvaluator {}
@@ -12,7 +12,7 @@ enum AppLockService {
     static func authenticate(
         using evaluator: BiometricEvaluator,
         reason: String,
-        completion: @escaping (Bool) -> Void
+        completion: @Sendable @escaping (Bool) -> Void
     ) {
         var error: NSError?
         if evaluator.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
