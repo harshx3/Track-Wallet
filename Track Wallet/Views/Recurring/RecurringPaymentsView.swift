@@ -274,6 +274,8 @@ struct RecurringPaymentRow: View {
                         Text(accountName)
                             .font(AppTypography.caption)
                             .foregroundColor(AppTheme.textSecondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
 
                     if payment.isActive && !payment.isCompleted {
@@ -281,15 +283,19 @@ struct RecurringPaymentRow: View {
                             Text("Ongoing")
                                 .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 1)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
                                 .background(Capsule().fill(AppTheme.recurring))
                         } else {
                             Text("\(payment.completedInstallments)/\(payment.totalInstallments)")
                                 .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 1)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
                                 .background(Capsule().fill(statusColor))
                         }
                     }
@@ -298,8 +304,10 @@ struct RecurringPaymentRow: View {
                         Text("\(payment.splitCount) split")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(AppTheme.recurring)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 1)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
                             .background(Capsule().fill(AppTheme.recurring.opacity(0.15)))
                     }
                 }
