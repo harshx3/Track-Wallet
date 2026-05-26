@@ -35,6 +35,10 @@ struct ContentView: View {
         appLockEnabled && !isUnlocked
     }
 
+    private var shouldHideSensitiveContent: Bool {
+        authManager.isAuthenticated && hasCompletedOnboarding && scenePhase != .active
+    }
+
     var body: some View {
         Group {
             if !hasCompletedOnboarding {
@@ -90,6 +94,12 @@ struct ContentView: View {
         .dynamicTypeSize(dynamicTypeSize)
         .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
         .animation(.easeInOut(duration: 0.3), value: authManager.isCheckingCredential)
+        .overlay {
+            if shouldHideSensitiveContent {
+                PrivacyShieldView()
+                    .transition(.opacity)
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if appLockEnabled {
                 if newPhase == .background {
@@ -105,6 +115,27 @@ struct ContentView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Privacy Shield
+
+struct PrivacyShieldView: View {
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea()
+
+            VStack(spacing: 12) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(AppTheme.primary)
+                Text("Wallet Flows")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.primary)
             }
         }
     }

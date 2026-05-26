@@ -59,13 +59,13 @@ struct BudgetsView: View {
                                     .foregroundColor(AppTheme.textSecondary)
                             }
 
-                            ProgressView(value: min(1.0, overallProgress))
-                                .tint(overallProgressColor)
+                            UtilizationGauge(value: overallProgress, height: 8, warningAt: 0.7, dangerAt: 0.9)
 
                             HStack {
                                 Text("\(Int(min(100, overallProgress * 100)))% used")
-                                    .font(AppTypography.caption)
+                                    .font(.system(.caption, design: .rounded, weight: .semibold))
                                     .foregroundColor(overallProgressColor)
+                                    .contentTransition(.numericText())
                                 Spacer()
                                 let remaining = totalBudget - totalSpent
                                 Text(remaining >= 0 ? "\(remaining.currencyFormatted) remaining" : "\(abs(remaining).currencyFormatted) over budget")
@@ -139,9 +139,7 @@ struct BudgetsView: View {
     }
 
     private var overallProgressColor: Color {
-        if overallProgress < 0.7 { return AppTheme.income }
-        if overallProgress < 1.0 { return AppTheme.transfer }
-        return AppTheme.expense
+        AppTheme.utilizationColor(overallProgress, warningAt: 0.7, dangerAt: 0.9)
     }
 }
 

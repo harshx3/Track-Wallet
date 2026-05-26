@@ -18,10 +18,18 @@ final class AuthenticationManager {
     private let userIDKey = "appleUserID"
     private let userNameKey = "appleUserName"
     private let userEmailKey = "appleUserEmail"
-    
+
+    private var revocationObserver: NSObjectProtocol?
+
     init() {
         loadUserInfo()
         checkCredentialState()
+    }
+
+    deinit {
+        if let observer = revocationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     
     // MARK: - Keychain
@@ -188,7 +196,8 @@ final class AuthenticationManager {
     // MARK: - Revocation Listener
     
     func startListeningForRevocation() {
-        NotificationCenter.default.addObserver(
+        guard revocationObserver == nil else { return }
+        revocationObserver = NotificationCenter.default.addObserver(
             forName: ASAuthorizationAppleIDProvider.credentialRevokedNotification,
             object: nil,
             queue: .main

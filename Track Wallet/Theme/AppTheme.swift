@@ -127,6 +127,38 @@ struct CardModifier: ViewModifier {
     }
 }
 
+// MARK: - Premium Card Modifier (hairline border, continuous corners, no shadow)
+
+struct PremiumCardModifier: ViewModifier {
+    var radius: CGFloat = AppRadius.md
+    var tint: Color? = nil
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(tint ?? AppTheme.cardBackground)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(AppTheme.border.opacity(0.45), lineWidth: 0.5)
+            }
+    }
+}
+
+// MARK: - Pressable Card Button Style
+
+struct PressableCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, pressed in
+                if pressed { HapticManager.impact(.light) }
+            }
+    }
+}
+
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -158,5 +190,59 @@ struct SecondaryButtonStyle: ButtonStyle {
 extension View {
     func cardStyle() -> some View {
         self.modifier(CardModifier())
+    }
+
+    func premiumCard(radius: CGFloat = AppRadius.md, tint: Color? = nil) -> some View {
+        self.modifier(PremiumCardModifier(radius: radius, tint: tint))
+    }
+}
+
+// MARK: - Utilization Threshold Helper
+
+extension AppTheme {
+    /// Returns a color based on a 0...1+ utilization value.
+    /// Defaults to 60% warning, 85% danger — suitable for credit utilization.
+    static func utilizationColor(_ value: Double, warningAt: Double = 0.6, dangerAt: Double = 0.85) -> Color {
+        if value < warningAt { return primary }
+        if value < dangerAt { return transfer }
+        return expense
+    }
+
+    static func utilizationGradient(_ value: Double, warningAt: Double = 0.6, dangerAt: Double = 0.85) -> LinearGradient {
+        let color = utilizationColor(value, warningAt: warningAt, dangerAt: dangerAt)
+        return LinearGradient(
+            colors: [color.opacity(0.75), color],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+// MARK: - Utilization Gauge (gradient capsule progress bar)
+
+struct UtilizationGauge: View {
+    let value: Double
+    var height: CGFloat = 8
+    var warningAt: Double = 0.6
+    var dangerAt: Double = 0.85
+    var animate: Bool = true
+
+    private var clamped: Double {
+        min(1.0, max(0, value))
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color(.systemGray5))
+
+                Capsule()
+                    .fill(AppTheme.utilizationGradient(value, warningAt: warningAt, dangerAt: dangerAt))
+                    .frame(width: max(height, geo.size.width * clamped))
+                    .animation(animate ? .smooth(duration: 0.55) : nil, value: clamped)
+            }
+        }
+        .frame(height: height)
     }
 }
